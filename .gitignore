@@ -1,5 +1,6 @@
 /motwr
 .DS_Store
 .idea/
-.venv/
 .superpowers/
+samples/*.mp4
+out.mp4
