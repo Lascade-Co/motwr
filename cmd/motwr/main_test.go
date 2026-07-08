@@ -56,5 +56,12 @@ func TestEndToEnd(t *testing.T) {
 	if r.Duration < 6 || r.Duration > 20 {
 		t.Errorf("suspicious output duration %.2fs", r.Duration)
 	}
+	// The VIDEO stream must be as long as the container: a botched outro
+	// concat leaves full-length audio but a video track that ends at the
+	// main segment (frozen last frame while the outro audio plays).
+	if r.Duration-r.VideoDuration > 0.5 {
+		t.Errorf("video stream %.2fs much shorter than container %.2fs — outro video missing",
+			r.VideoDuration, r.Duration)
+	}
 	fmt.Println("E2E output at", out, "- open it to verify visually")
 }

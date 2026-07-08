@@ -15,18 +15,30 @@ import (
 // falling back to the re-encode path can help.
 var errConcatShort = errors.New("concat output shorter than expected")
 
-// Concat appends outro after main. Tries stream-copy first (encode params
-// match by construction); falls back to re-encode (ADR-0002).
+// Concat appends outro after main. The outro is first re-encoded with the
+// pipeline's own encoder settings (NormalizeForConcatArgs) so the stream-copy
+// concat's same-codec-parameters precondition genuinely holds — the shipped
+// outro.mp4 has a different H.264 profile and track timescale, and copy-
+// concatenating mismatched streams silently squeezes the outro video into
+// milliseconds (frozen frame, audio still playing). Falls back to a full
+// re-encode concat (ADR-0002) if the copy path still fails.
 //
-// The concat demuxer is known to exit 0 while silently dropping a segment
-// it failed to open (observed in E2E with relative paths), so a successful
-// run is verified by comparing the output's duration against
-// Probe(main)+Probe(outro) before it's trusted.
+// The concat demuxer is also known to exit 0 while silently dropping a
+// segment it failed to open (observed in E2E with relative paths), so every
+// result is verified against Probe(main)+Probe(outro) — per video stream,
+// not just container duration — before it's trusted.
 func Concat(ctx context.Context, mainPath, outroPath, outPath string) error {
-	list := filepath.Join(filepath.Dir(mainPath), "concat.txt")
+	dir := filepath.Dir(mainPath)
+
+	normOutro := filepath.Join(dir, "outro-normalized.mp4")
+	if err := Run(ctx, NormalizeForConcatArgs(outroPath, normOutro)); err != nil {
+		return fmt.Errorf("normalize outro: %w", err)
+	}
+
+	list := filepath.Join(dir, "concat.txt")
 	content := fmt.Sprintf("file '%s'\nfile '%s'\n",
 		strings.ReplaceAll(mainPath, "'", `'\''`),
-		strings.ReplaceAll(outroPath, "'", `'\''`))
+		strings.ReplaceAll(normOutro, "'", `'\''`))
 	if err := os.WriteFile(list, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("concat list: %w", err)
 	}
@@ -55,10 +67,13 @@ func Concat(ctx context.Context, mainPath, outroPath, outPath string) error {
 
 // verifyConcatDuration probes main, outro, and the concat output, and
 // confirms the output accounts for both inputs' durations (within a 0.5s
-// tolerance). Probe failures on main or outro are returned as plain errors
-// (not wrapping errConcatShort) since re-encoding the same bad inputs won't
-// help; anything wrong with the output itself (unprobeable, or too short)
-// is wrapped in errConcatShort so callers can tell the two cases apart.
+// tolerance) — checked separately for the container and for the video
+// stream. The video-stream check matters: a botched copy-concat can produce
+// a full-length audio track (container duration looks fine) while the whole
+// outro video collapses into a few milliseconds. Probe failures on main or
+// outro are returned as plain errors (not wrapping errConcatShort) since
+// re-encoding the same bad inputs won't help; anything wrong with the output
+// itself is wrapped in errConcatShort so callers can tell the cases apart.
 func verifyConcatDuration(ctx context.Context, mainPath, outroPath, outPath string) error {
 	mainR, err := Probe(ctx, mainPath)
 	if err != nil {
@@ -68,15 +83,24 @@ func verifyConcatDuration(ctx context.Context, mainPath, outroPath, outPath stri
 	if err != nil {
 		return fmt.Errorf("probe outro %s: %w", outroPath, err)
 	}
-	want := mainR.Duration + outroR.Duration
 
 	outR, err := Probe(ctx, outPath)
 	if err != nil {
 		return fmt.Errorf("%w: probe concat output %s: %v", errConcatShort, outPath, err)
 	}
+
+	want := mainR.Duration + outroR.Duration
 	if want-outR.Duration > 0.5 {
 		return fmt.Errorf("%w: got %.3fs, want >= %.3fs (main %.3fs + outro %.3fs)",
 			errConcatShort, outR.Duration, want-0.5, mainR.Duration, outroR.Duration)
+	}
+
+	if mainR.VideoDuration > 0 && outroR.VideoDuration > 0 {
+		wantVideo := mainR.VideoDuration + outroR.VideoDuration
+		if wantVideo-outR.VideoDuration > 0.5 {
+			return fmt.Errorf("%w: video stream is %.3fs, want >= %.3fs (main %.3fs + outro %.3fs) — outro video was dropped or time-squeezed",
+				errConcatShort, outR.VideoDuration, wantVideo-0.5, mainR.VideoDuration, outroR.VideoDuration)
+		}
 	}
 	return nil
 }

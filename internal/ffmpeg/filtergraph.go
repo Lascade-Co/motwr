@@ -76,12 +76,36 @@ func BuildMainArgs(p RenderPlan) []string {
 	fmt.Fprintf(&g, "amix=inputs=%d:duration=first:dropout_transition=0:normalize=0[aout]", n+2)
 
 	args = append(args, "-filter_complex", g.String(),
-		"-map", "[vout]", "-map", "[aout]",
-		"-c:v", "libx264", "-preset", "medium", "-crf", "18", "-r", "30",
-		"-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
+		"-map", "[vout]", "-map", "[aout]")
+	args = append(args, encodeArgs()...)
+	args = append(args,
 		"-t", fmt.Sprintf("%.3f", p.MainDuration),
 		p.OutPath)
 	return args
+}
+
+// encodeArgs are the output codec settings shared by every segment the
+// pipeline produces. Segments concatenated by stream copy must come from
+// the exact same encoder configuration (ADR-0002) — a profile or track
+// timescale mismatch makes the concat demuxer emit non-monotonic timestamps
+// that squeeze one segment's video into milliseconds.
+func encodeArgs() []string {
+	return []string{
+		"-c:v", "libx264", "-preset", "medium", "-crf", "18", "-r", "30",
+		"-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
+	}
+}
+
+// NormalizeForConcatArgs re-encodes src with the pipeline's own encoder
+// settings and output geometry so it can be stream-copy-concatenated with a
+// pipeline-rendered segment. Used on the outro, whose source encode (H.264
+// Main profile, 1/30 timescale) does not match ours.
+func NormalizeForConcatArgs(srcPath, outPath string) []string {
+	args := []string{"-y", "-i", srcPath,
+		"-vf", "scale=1080:1920,fps=30,format=yuv420p",
+		"-af", "aresample=44100,aformat=channel_layouts=stereo"}
+	args = append(args, encodeArgs()...)
+	return append(args, outPath)
 }
 
 // ConcatArgsCopy stream-copies main+outro listed in a concat-demuxer file.

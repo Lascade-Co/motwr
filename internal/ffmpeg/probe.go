@@ -15,7 +15,8 @@ import (
 
 type ProbeResult struct {
 	Width, Height int
-	Duration      float64
+	Duration      float64 // container duration (longest stream)
+	VideoDuration float64 // first video stream's own duration; 0 if none
 }
 
 type probeJSON struct {
@@ -23,6 +24,7 @@ type probeJSON struct {
 		CodecType string `json:"codec_type"`
 		Width     int    `json:"width"`
 		Height    int    `json:"height"`
+		Duration  string `json:"duration"`
 	} `json:"streams"`
 	Format struct {
 		Duration string `json:"duration"`
@@ -30,7 +32,9 @@ type probeJSON struct {
 }
 
 // Probe returns container duration and, when a video stream exists, its
-// dimensions.
+// dimensions and stream duration. The distinction matters: a file whose
+// video track was truncated still reports a full container duration from
+// its audio track.
 func Probe(ctx context.Context, path string) (*ProbeResult, error) {
 	args := []string{"-v", "error", "-print_format", "json", "-show_format", "-show_streams", path}
 	cmd := exec.CommandContext(ctx, "ffprobe", args...)
@@ -47,6 +51,7 @@ func Probe(ctx context.Context, path string) (*ProbeResult, error) {
 	for _, s := range pj.Streams {
 		if s.CodecType == "video" {
 			r.Width, r.Height = s.Width, s.Height
+			r.VideoDuration, _ = strconv.ParseFloat(s.Duration, 64)
 			break
 		}
 	}

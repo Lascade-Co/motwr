@@ -22,5 +22,10 @@ parameters exactly so no re-encode is needed).
   layout changes mean regenerating ASS/filter expressions, not JSX edits.
 - Bird webms must be decoded with `-vcodec libvpx-vp9`; ffmpeg's native VP9
   decoder silently drops the alpha channel.
-- If the outro's encode parameters ever change, the stream-copy concat can
-  fail; the pipeline falls back to a re-encoding concat filter.
+- The outro is re-encoded (~3 s clip) with the pipeline's own encoder
+  settings before the stream-copy concat: "matching parameters by
+  construction" proved false in practice (the shipped outro.mp4 is H.264
+  Main profile at 1/30 track timescale vs our High at 1/15360), and
+  copy-concatenating mismatched streams silently collapses the outro video
+  into milliseconds while its audio plays. Concat results are verified by
+  per-video-stream duration, with a full re-encoding concat as fallback.
