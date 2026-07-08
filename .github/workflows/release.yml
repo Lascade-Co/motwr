@@ -48,7 +48,8 @@ jobs:
         run: |
           ext=""
           [ "${{ matrix.goos }}" = "windows" ] && ext=".exe"
-          name="motwr-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          # No tag in the name: keeps releases/latest/download/ links stable.
+          name="motwr-${{ matrix.goos }}-${{ matrix.goarch }}"
           mkdir -p "dist/${name}"
           cp "motwr${ext}" "dist/${name}/"
           cp -R assets "dist/${name}/assets"

@@ -38,15 +38,16 @@ not an error.
 
 ### 2. Download motwr
 
-Go to this repository's **Releases** page and download the zip for your
-computer from the latest release:
+Click the download link for your computer (always the newest version):
 
-| Your computer | File to download |
+| Your computer | Download |
 |---|---|
-| Mac with Apple Silicon (M1/M2/M3/M4) | `motwr-…-darwin-arm64.zip` |
-| Mac with Intel | `motwr-…-darwin-amd64.zip` |
-| Windows | `motwr-…-windows-amd64.zip` |
-| Linux | `motwr-…-linux-amd64.zip` |
+| Mac with Apple Silicon (M1/M2/M3/M4) | [motwr-darwin-arm64.zip](https://github.com/Lascade-Co/motwr/releases/latest/download/motwr-darwin-arm64.zip) |
+| Mac with Intel | [motwr-darwin-amd64.zip](https://github.com/Lascade-Co/motwr/releases/latest/download/motwr-darwin-amd64.zip) |
+| Windows | [motwr-windows-amd64.zip](https://github.com/Lascade-Co/motwr/releases/latest/download/motwr-windows-amd64.zip) |
+| Linux | [motwr-linux-amd64.zip](https://github.com/Lascade-Co/motwr/releases/latest/download/motwr-linux-amd64.zip) |
+
+(All versions are also on the [Releases page](https://github.com/Lascade-Co/motwr/releases).)
 
 Unzip it anywhere (e.g. your Desktop). The folder already contains the
 `motwr` program and an `assets` folder with all the branding media — keep
