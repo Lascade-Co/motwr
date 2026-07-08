@@ -10,6 +10,7 @@ import (
 	"math"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 type ProbeResult struct {
@@ -31,11 +32,11 @@ type probeJSON struct {
 // Probe returns container duration and, when a video stream exists, its
 // dimensions.
 func Probe(ctx context.Context, path string) (*ProbeResult, error) {
-	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error",
-		"-print_format", "json", "-show_format", "-show_streams", path)
+	args := []string{"-v", "error", "-print_format", "json", "-show_format", "-show_streams", path}
+	cmd := exec.CommandContext(ctx, "ffprobe", args...)
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("ffprobe %s: %w (%s)", path, err, exitStderr(err))
+		return nil, fmt.Errorf("ffprobe %s: %w (%s)", strings.Join(args, " "), err, exitStderr(err))
 	}
 	var pj probeJSON
 	if err := json.Unmarshal(out, &pj); err != nil {

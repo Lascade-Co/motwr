@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/coder/websocket"
@@ -34,6 +35,9 @@ func Synthesize(ctx context.Context, script, outPath string) ([]WordStamp, error
 			return stamps, nil
 		}
 		lastErr = err
+		if attempt == 2 {
+			break
+		}
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -101,6 +105,7 @@ func synthesizeOnce(ctx context.Context, script, outPath string) ([]WordStamp, e
 				if err := os.WriteFile(outPath, audio, 0o644); err != nil {
 					return nil, fmt.Errorf("tts: write %s: %w", outPath, err)
 				}
+				sort.Slice(stamps, func(i, j int) bool { return stamps[i].Start < stamps[j].Start })
 				return stamps, nil
 			}
 		case websocket.MessageBinary:

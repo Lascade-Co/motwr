@@ -37,6 +37,19 @@ func TestClipTrimmedAtMainEnd(t *testing.T) {
 	if last.End > 60 {
 		t.Errorf("last appearance End %.3f exceeds main duration 60", last.End)
 	}
+
+	// Force the trim branch: a single clip longer than the main duration
+	// must be cut off exactly at mainDuration.
+	trimmed := Build(10, []float64{20}, 5, rand.New(rand.NewSource(1)))
+	if len(trimmed) != 1 {
+		t.Fatalf("expected exactly 1 appearance, got %d", len(trimmed))
+	}
+	if trimmed[0].Start != 0 {
+		t.Errorf("trimmed appearance Start = %.3f, want 0", trimmed[0].Start)
+	}
+	if trimmed[0].End != 10 {
+		t.Errorf("trimmed appearance End = %.3f, want 10", trimmed[0].End)
+	}
 }
 
 func TestSkipsTinyTailAppearance(t *testing.T) {
