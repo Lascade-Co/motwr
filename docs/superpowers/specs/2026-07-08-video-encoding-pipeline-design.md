@@ -76,7 +76,8 @@ live in one per-run temp dir, removed on exit (including on error).
      Title: Anton 88 px, white, uppercase, letter-spaced, drop shadow.
      Subtitle: Montserrat Bold 32 px, gold `#FFD700`, uppercase.
    - **Karaoke captions** — dark pill (`rgba(0,0,0,0.6)`, rounded),
-     Montserrat 42 px centered ~35% from top; one Dialogue event per word
+     Montserrat 42 px, lower-middle (~65% from the top, TikTok-style, as in
+     the reference composition); one Dialogue event per word
      interval rendering the page's full text with only the active word in
      `#FFD700`, the rest white.
    Fonts are loaded from `assets/fonts/` via the subtitles filter's

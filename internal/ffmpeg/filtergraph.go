@@ -94,7 +94,7 @@ func ConcatArgsCopy(listFile, outPath string) []string {
 func ConcatArgsReencode(mainPath, outroPath, outPath string) []string {
 	return []string{"-y", "-i", mainPath, "-i", outroPath,
 		"-filter_complex",
-		"[0:v]fps=30,scale=1080:1920[v0];[1:v]fps=30,scale=1080:1920[v1];" +
+		"[0:v]fps=30,scale=1080:1920,format=yuv420p[v0];[1:v]fps=30,scale=1080:1920,format=yuv420p[v1];" +
 			"[0:a]aresample=44100,aformat=channel_layouts=stereo[a0];" +
 			"[1:a]aresample=44100,aformat=channel_layouts=stereo[a1];" +
 			"[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]",

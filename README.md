@@ -7,9 +7,11 @@ narration, brand outro appended.
 
 ## Requirements
 
-- Go ≥ 1.22 (build only)
+- Go ≥ 1.26 (build only)
 - `ffmpeg` / `ffprobe` on PATH (with libx264, libvpx, libass)
 - Network access at render time (edge-tts)
+- The committed `assets/` directory (brand media: bird webms, ambience
+  tracks, logo, outro, fonts) — validated at startup, override with `-assets`
 
 ## Usage
 
