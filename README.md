@@ -38,8 +38,6 @@ not an error.
 
 ### 2. Download motwr
 
-Click the download link for your computer (always the newest version):
-
 | Your computer | Download |
 |---|---|
 | Mac with Apple Silicon (M1/M2/M3/M4) | [motwr-darwin-arm64.zip](https://github.com/Lascade-Co/motwr/releases/latest/download/motwr-darwin-arm64.zip) |
