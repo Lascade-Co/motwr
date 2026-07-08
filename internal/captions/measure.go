@@ -73,5 +73,5 @@ func FitTitleSize(f *sfnt.Font, text string, maxWidth, startSize, floorSize, let
 		}
 		size -= 0.25
 	}
-	return 0, fmt.Errorf("title too long: would need under %.0fpx font (floor %.0fpx)", floorSize, floorSize)
+	return 0, fmt.Errorf("title too long: no fitting size at or above the %.0fpx floor", floorSize)
 }

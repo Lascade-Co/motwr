@@ -2,6 +2,7 @@ package ffmpeg
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/lascade/motwr/internal/schedule"
@@ -66,7 +67,7 @@ func BuildMainArgs(p RenderPlan) []string {
 		l := a.End - a.Start
 		fmt.Fprintf(&g,
 			"[sfx%d]atrim=0:%.3f,afade=t=out:st=%.3f:d=0.3,volume=0.4,adelay=delays=%d:all=1[asfx%d];",
-			i, l, max(0, l-0.3), int(a.Start*1000), i)
+			i, l, max(0, l-0.3), int(math.Round(a.Start*1000)), i)
 	}
 	g.WriteString("[avo][abg]")
 	for i := range p.Appearances {
@@ -103,9 +104,9 @@ func ConcatArgsReencode(mainPath, outroPath, outPath string) []string {
 		outPath}
 }
 
-// escapeFilterArg quotes a path for use inside -filter_complex.
+// escapeFilterArg quotes a path for use inside -filter_complex. ffmpeg does
+// no escape processing inside '...'; a literal quote needs close-reopen:
+// it's → 'it'\''s'.
 func escapeFilterArg(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `'`, `\'`)
-	return "'" + s + "'"
+	return "'" + strings.ReplaceAll(s, `'`, `'\''`) + "'"
 }
