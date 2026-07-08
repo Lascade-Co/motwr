@@ -11,17 +11,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/lascade/motwr/internal/captions"
+	"github.com/lascade/motwr/internal/config"
 	"github.com/lascade/motwr/internal/ffmpeg"
 	"github.com/lascade/motwr/internal/job"
 	"github.com/lascade/motwr/internal/schedule"
 	"github.com/lascade/motwr/internal/tts"
 )
-
-const birdGapSeconds = 10.0
 
 type options struct {
 	job, video, out, assets string
@@ -95,9 +93,7 @@ func run(ctx context.Context, o options) error {
 	if err != nil {
 		return err
 	}
-	titleSize, err := captions.FitTitleSize(antonFont, strings.ToUpper(j.Title),
-		captions.TitleMaxWidth, captions.TitleStartSize, captions.TitleFloorSize,
-		captions.TitleLetterSpacing)
+	titleLayout, err := captions.LayoutTitle(antonFont, j.Title)
 	if err != nil {
 		return err
 	}
@@ -131,9 +127,9 @@ func run(ctx context.Context, o options) error {
 	for i, s := range stamps {
 		words[i] = captions.Word{Text: s.Text, Start: s.Start.Seconds(), End: s.End.Seconds()}
 	}
-	pages := captions.BuildPages(words, captions.MaxPageDur)
+	pages := captions.BuildPages(words, config.MaxPageDur)
 	assPath := filepath.Join(tmp, "captions.ass")
-	ass := captions.GenerateASS(j.Title, j.Subtitle, titleSize, pages, mainDur)
+	ass := captions.GenerateASS(titleLayout, j.Subtitle, pages, mainDur)
 	if err := os.WriteFile(assPath, []byte(ass), 0o644); err != nil {
 		return err
 	}
@@ -152,7 +148,7 @@ func run(ctx context.Context, o options) error {
 	if seed == 0 {
 		seed = time.Now().UnixNano()
 	}
-	apps := schedule.Build(mainDur, clipDurs, birdGapSeconds, rand.New(rand.NewSource(seed)))
+	apps := schedule.Build(mainDur, clipDurs, config.BirdGap, rand.New(rand.NewSource(seed)))
 	clipPaths := make([]string, len(apps))
 	for i, ap := range apps {
 		clipPaths[i] = a.birds[ap.Clip]
@@ -195,7 +191,7 @@ func (a assets) all() []string {
 }
 
 func assetPaths(dir string, v job.Vehicle) assets {
-	birds := make([]string, 4)
+	birds := make([]string, config.BirdClipCount)
 	for i := range birds {
 		birds[i] = filepath.Join(dir, "bird", fmt.Sprintf("%d.webm", i))
 	}

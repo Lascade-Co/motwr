@@ -8,7 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
+
+	"github.com/lascade/motwr/internal/config"
 )
 
 type Vehicle string
@@ -61,7 +62,7 @@ func Parse(data []byte) (*Job, error) {
 func Load(pathOrURL string) (*Job, error) {
 	var data []byte
 	if strings.HasPrefix(pathOrURL, "http://") || strings.HasPrefix(pathOrURL, "https://") {
-		client := &http.Client{Timeout: 30 * time.Second}
+		client := &http.Client{Timeout: config.JobFetchTimeout}
 		resp, err := client.Get(pathOrURL)
 		if err != nil {
 			return nil, fmt.Errorf("job: fetch %s: %w", pathOrURL, err)

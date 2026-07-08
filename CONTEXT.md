@@ -37,10 +37,12 @@ gold (#FFD700), the rest white.
 _Avoid_: subtitle line, caption block
 
 **Title Block**:
-The two-line heading overlay — Job title (Anton, white) over subtitle
-(Montserrat, gold) — pinned top-center for the whole Main Segment. The title
-font shrinks to fit 90% of frame width (floor 48 px; below that the Job is
-rejected as "title too long").
+The heading overlay — Job title (Anton, white, 1-2 lines) over subtitle
+(Montserrat, gold) — pinned top-center for the whole Main Segment. A title
+too wide at full size first breaks into two lines at the most balanced word
+boundary (only when necessary); only then does the font shrink to fit the
+widest line (floor 48 px; below that the Job is rejected as "title too
+long").
 
 **Bird Appearance**:
 One scheduled overlay of a randomly-picked bird webm (alpha) plus its

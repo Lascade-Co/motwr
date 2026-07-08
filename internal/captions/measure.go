@@ -4,12 +4,16 @@ package captions
 
 import (
 	"fmt"
+	"math"
 	"os"
+	"strings"
 	"unicode/utf8"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/font/sfnt"
+
+	"github.com/lascade/motwr/internal/config"
 )
 
 func LoadFont(path string) (*sfnt.Font, error) {
@@ -39,6 +43,70 @@ func TextWidth(f *sfnt.Font, text string, sizePx, letterSpacing float64) (float6
 		w += letterSpacing * float64(n-1)
 	}
 	return w, nil
+}
+
+// TitleLayout is a fitted title: one or two uppercased lines and the font
+// size that renders every line within config.TitleMaxWidth.
+type TitleLayout struct {
+	Lines []string
+	Size  float64
+}
+
+// LayoutTitle fits a title. It stays a single line at TitleStartSize when it
+// fits; otherwise it first breaks into two lines at the most balanced word
+// boundary (breaking happens only when necessary), and only then shrinks the
+// font to fit the widest line — TitleFloorSize is the limit, below which the
+// title is rejected. A single unbreakable word skips straight to shrinking.
+func LayoutTitle(f *sfnt.Font, title string) (TitleLayout, error) {
+	upper := strings.ToUpper(strings.Join(strings.Fields(title), " "))
+	w, err := TextWidth(f, upper, config.TitleStartSize, config.TitleLetterSpacing)
+	if err != nil {
+		return TitleLayout{}, err
+	}
+	if w <= config.TitleMaxWidth {
+		return TitleLayout{Lines: []string{upper}, Size: config.TitleStartSize}, nil
+	}
+
+	words := strings.Fields(upper)
+	if len(words) < 2 {
+		size, err := FitTitleSize(f, upper, config.TitleMaxWidth,
+			config.TitleStartSize, config.TitleFloorSize, config.TitleLetterSpacing)
+		if err != nil {
+			return TitleLayout{}, err
+		}
+		return TitleLayout{Lines: []string{upper}, Size: size}, nil
+	}
+
+	// Pick the two-line break that minimizes the wider line's width.
+	bestWidth := math.Inf(1)
+	var bestLines []string
+	var widerLine string
+	for i := 1; i < len(words); i++ {
+		l1 := strings.Join(words[:i], " ")
+		l2 := strings.Join(words[i:], " ")
+		w1, err := TextWidth(f, l1, config.TitleStartSize, config.TitleLetterSpacing)
+		if err != nil {
+			return TitleLayout{}, err
+		}
+		w2, err := TextWidth(f, l2, config.TitleStartSize, config.TitleLetterSpacing)
+		if err != nil {
+			return TitleLayout{}, err
+		}
+		wide, wideLine := w1, l1
+		if w2 > w1 {
+			wide, wideLine = w2, l2
+		}
+		if wide < bestWidth {
+			bestWidth, bestLines, widerLine = wide, []string{l1, l2}, wideLine
+		}
+	}
+
+	size, err := FitTitleSize(f, widerLine, config.TitleMaxWidth,
+		config.TitleStartSize, config.TitleFloorSize, config.TitleLetterSpacing)
+	if err != nil {
+		return TitleLayout{}, err
+	}
+	return TitleLayout{Lines: bestLines, Size: size}, nil
 }
 
 // FitTitleSize shrinks startSize until text fits maxWidth. Advance widths

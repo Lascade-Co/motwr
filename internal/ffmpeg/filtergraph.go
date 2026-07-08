@@ -3,8 +3,10 @@ package ffmpeg
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
+	"github.com/lascade/motwr/internal/config"
 	"github.com/lascade/motwr/internal/schedule"
 )
 
@@ -38,26 +40,29 @@ func BuildMainArgs(p RenderPlan) []string {
 
 	var g strings.Builder
 	// Base video: uniform Speed Ramp, output size, constant frame rate.
-	fmt.Fprintf(&g, "[0:v]setpts=%f*PTS,scale=1080:1920,fps=30[v0];", p.SpeedFactor)
+	fmt.Fprintf(&g, "[0:v]setpts=%f*PTS,scale=%d:%d,fps=%d[v0];",
+		p.SpeedFactor, config.OutputWidth, config.OutputHeight, config.OutputFPS)
 	cur := "v0"
 	for i, a := range p.Appearances {
 		fmt.Fprintf(&g,
-			"[%d:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setpts=PTS-STARTPTS+%.3f/TB[bird%d];",
-			i+1, a.Start, i)
+			"[%d:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setpts=PTS-STARTPTS+%.3f/TB[bird%d];",
+			i+1, config.OutputWidth, config.OutputHeight, config.OutputWidth, config.OutputHeight, a.Start, i)
 		fmt.Fprintf(&g,
 			"[%s][bird%d]overlay=0:0:eof_action=pass:enable='between(t,%.3f,%.3f)'[v%d];",
 			cur, i, a.Start, a.End, i+1)
 		cur = fmt.Sprintf("v%d", i+1)
 	}
-	fmt.Fprintf(&g, "[%d:v]scale=218:-1[logo];", logoIdx)
-	fmt.Fprintf(&g, "[%s][logo]overlay=main_w-overlay_w-40:40[vlogo];", cur)
+	fmt.Fprintf(&g, "[%d:v]scale=%d:-1[logo];", logoIdx, config.LogoWidth)
+	fmt.Fprintf(&g, "[%s][logo]overlay=main_w-overlay_w-%d:%d[vlogo];",
+		cur, config.LogoPadding, config.LogoPadding)
 	fmt.Fprintf(&g, "[vlogo]subtitles=filename=%s:fontsdir=%s,format=yuv420p[vout];",
 		escapeFilterArg(p.ASSFile), escapeFilterArg(p.FontsDir))
 
 	// Audio: voiceover first so amix duration=first tracks it.
-	fmt.Fprintf(&g, "[%d:a]volume=1.5[avo];", voIdx)
-	fmt.Fprintf(&g, "[%d:a]atrim=0:%.3f,volume=0.3,afade=t=out:st=%.3f:d=1.5[abg];",
-		bgIdx, p.MainDuration, max(0, p.MainDuration-1.5))
+	fmt.Fprintf(&g, "[%d:a]volume=%g[avo];", voIdx, config.VoiceoverVolume)
+	fmt.Fprintf(&g, "[%d:a]atrim=0:%.3f,volume=%g,afade=t=out:st=%.3f:d=%g[abg];",
+		bgIdx, p.MainDuration, config.BackgroundVolume,
+		max(0, p.MainDuration-config.BackgroundFadeOut), config.BackgroundFadeOut)
 	fmt.Fprintf(&g, "[%d:a]asplit=%d", sfxIdx, n)
 	for i := range p.Appearances {
 		fmt.Fprintf(&g, "[sfx%d]", i)
@@ -66,8 +71,9 @@ func BuildMainArgs(p RenderPlan) []string {
 	for i, a := range p.Appearances {
 		l := a.End - a.Start
 		fmt.Fprintf(&g,
-			"[sfx%d]atrim=0:%.3f,afade=t=out:st=%.3f:d=0.3,volume=0.4,adelay=delays=%d:all=1[asfx%d];",
-			i, l, max(0, l-0.3), int(math.Round(a.Start*1000)), i)
+			"[sfx%d]atrim=0:%.3f,afade=t=out:st=%.3f:d=%g,volume=%g,adelay=delays=%d:all=1[asfx%d];",
+			i, l, max(0, l-config.BirdSFXFadeOut), config.BirdSFXFadeOut,
+			config.BirdSFXVolume, int(math.Round(a.Start*1000)), i)
 	}
 	g.WriteString("[avo][abg]")
 	for i := range p.Appearances {
@@ -91,9 +97,20 @@ func BuildMainArgs(p RenderPlan) []string {
 // that squeeze one segment's video into milliseconds.
 func encodeArgs() []string {
 	return []string{
-		"-c:v", "libx264", "-preset", "medium", "-crf", "18", "-r", "30",
-		"-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
+		"-c:v", "libx264", "-preset", config.VideoPreset,
+		"-crf", strconv.Itoa(config.VideoCRF), "-r", strconv.Itoa(config.OutputFPS),
+		"-c:a", "aac", "-b:a", config.AudioBitrate,
+		"-ar", strconv.Itoa(config.AudioSampleRate), "-ac", strconv.Itoa(config.AudioChannels),
 	}
+}
+
+// normalizeFilters returns the video/audio filter strings that coerce any
+// input into the pipeline's output geometry and audio format.
+func normalizeFilters() (vf, af string) {
+	vf = fmt.Sprintf("scale=%d:%d,fps=%d,format=yuv420p",
+		config.OutputWidth, config.OutputHeight, config.OutputFPS)
+	af = fmt.Sprintf("aresample=%d,aformat=channel_layouts=stereo", config.AudioSampleRate)
+	return vf, af
 }
 
 // NormalizeForConcatArgs re-encodes src with the pipeline's own encoder
@@ -101,9 +118,8 @@ func encodeArgs() []string {
 // pipeline-rendered segment. Used on the outro, whose source encode (H.264
 // Main profile, 1/30 timescale) does not match ours.
 func NormalizeForConcatArgs(srcPath, outPath string) []string {
-	args := []string{"-y", "-i", srcPath,
-		"-vf", "scale=1080:1920,fps=30,format=yuv420p",
-		"-af", "aresample=44100,aformat=channel_layouts=stereo"}
+	vf, af := normalizeFilters()
+	args := []string{"-y", "-i", srcPath, "-vf", vf, "-af", af}
 	args = append(args, encodeArgs()...)
 	return append(args, outPath)
 }
@@ -116,16 +132,14 @@ func ConcatArgsCopy(listFile, outPath string) []string {
 // ConcatArgsReencode is the fallback when stream-copy fails (e.g. outro
 // encode parameters drifted from ours).
 func ConcatArgsReencode(mainPath, outroPath, outPath string) []string {
-	return []string{"-y", "-i", mainPath, "-i", outroPath,
+	vf, af := normalizeFilters()
+	args := []string{"-y", "-i", mainPath, "-i", outroPath,
 		"-filter_complex",
-		"[0:v]fps=30,scale=1080:1920,format=yuv420p[v0];[1:v]fps=30,scale=1080:1920,format=yuv420p[v1];" +
-			"[0:a]aresample=44100,aformat=channel_layouts=stereo[a0];" +
-			"[1:a]aresample=44100,aformat=channel_layouts=stereo[a1];" +
-			"[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]",
-		"-map", "[v]", "-map", "[a]",
-		"-c:v", "libx264", "-preset", "medium", "-crf", "18", "-r", "30",
-		"-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
-		outPath}
+		fmt.Sprintf("[0:v]%s[v0];[1:v]%s[v1];[0:a]%s[a0];[1:a]%s[a1];"+
+			"[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]", vf, vf, af, af),
+		"-map", "[v]", "-map", "[a]"}
+	args = append(args, encodeArgs()...)
+	return append(args, outPath)
 }
 
 // escapeFilterArg quotes a path for use inside -filter_complex. ffmpeg does

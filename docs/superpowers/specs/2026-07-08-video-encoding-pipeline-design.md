@@ -73,8 +73,12 @@ live in one per-run temp dir, removed on exit (including on error).
 5. **Caption pages** — group word timestamps into pages of ≤ 1.2 s (TikTok
    style, as in the reference). Generate one ASS subtitle file containing:
    - **Title block** — top-center, visible for the whole main segment.
-     Title: Anton 88 px, white, uppercase, letter-spaced, drop shadow.
-     Subtitle: Montserrat Bold 32 px, gold `#FFD700`, uppercase.
+     Title: Anton 88 px, white, uppercase, letter-spaced, drop shadow; if it
+     exceeds 90% of frame width it first breaks into two lines at the most
+     balanced word boundary (only when necessary), then shrinks to fit the
+     widest line (floor 48 px, else "title too long").
+     Subtitle: Montserrat Bold 32 px, gold `#FFD700`, uppercase, below the
+     last title line.
    - **Karaoke captions** — dark pill (`rgba(0,0,0,0.6)`, rounded),
      Montserrat 42 px, lower-middle (~65% from the top, TikTok-style, as in
      the reference composition); one Dialogue event per word

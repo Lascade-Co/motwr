@@ -3,9 +3,14 @@
 // playing their natural length (see CONTEXT.md "Bird Appearance").
 package schedule
 
-import "math/rand"
+import (
+	"math/rand"
 
-const minAppearance = 0.5 // seconds; shorter tails are skipped
+	"github.com/lascade/motwr/internal/config"
+)
+
+// minAppearance: shorter tails at the video's end are skipped.
+const minAppearance = config.BirdMinAppearance
 
 type Appearance struct {
 	Clip       int     // index into the clip-duration slice passed to Build

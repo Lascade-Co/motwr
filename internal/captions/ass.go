@@ -5,54 +5,56 @@ import (
 	"math"
 	"sort"
 	"strings"
+
+	"github.com/lascade/motwr/internal/config"
 )
 
-// Layout constants (PlayRes units == output pixels, 1080x1920).
+// ASS color fragments derived from the config palette.
 const (
-	TitleStartSize     = 88.0
-	TitleFloorSize     = 48.0
-	TitleMaxWidth      = 972.0 // 90% of 1080
-	TitleLetterSpacing = 2.0
-	MaxPageDur         = 1.2
-
-	titleY      = 200.0
-	subtitleGap = 18.0
-	captionY    = 1250.0
-
-	goldInline  = `{\1c&H00D7FF&}` // #FFD700 in ASS BBGGRR
+	goldInline  = `{\1c&H` + config.GoldBGR + `&}`
 	whiteInline = `{\1c&HFFFFFF&}`
 )
 
 // GenerateASS renders the full subtitle file: Title Block events plus one
-// Caption event per word-highlight interval.
-func GenerateASS(title, subtitle string, titleSize float64, pages []Page, mainDuration float64) string {
+// Caption event per word-highlight interval. All layout numbers come from
+// internal/config.
+func GenerateASS(title TitleLayout, subtitle string, pages []Page, mainDuration float64) string {
+	centerX := config.OutputWidth / 2
+	sideMargin := (config.OutputWidth - config.TitleMaxWidth) / 2
+
 	var b strings.Builder
 	b.WriteString("[Script Info]\n")
 	b.WriteString("ScriptType: v4.00+\n")
-	b.WriteString("PlayResX: 1080\nPlayResY: 1920\n")
+	fmt.Fprintf(&b, "PlayResX: %d\nPlayResY: %d\n", config.OutputWidth, config.OutputHeight)
 	b.WriteString("WrapStyle: 2\nScaledBorderAndShadow: yes\n\n")
 
 	b.WriteString("[V4+ Styles]\n")
 	b.WriteString("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
 	// Title: Anton, white, slight shadow. Alignment 8 = top-center.
-	fmt.Fprintf(&b, "Style: Title,Anton,%s,&H00FFFFFF,&H00FFFFFF,&H00000000,&HA0000000,0,0,0,0,100,100,%g,0,1,0,2,8,54,54,0,1\n",
-		trimFloat(titleSize), TitleLetterSpacing)
-	// Subtitle: Montserrat Bold, gold (#FFD700 -> &H0000D7FF).
-	b.WriteString("Style: Subtitle,Montserrat,32,&H0000D7FF,&H0000D7FF,&H00000000,&HA0000000,-1,0,0,0,100,100,3,0,1,0,1,8,54,54,0,1\n")
+	fmt.Fprintf(&b, "Style: Title,Anton,%s,&H00FFFFFF,&H00FFFFFF,&H00000000,&HA0000000,0,0,0,0,100,100,%g,0,1,0,2,8,%s,%s,0,1\n",
+		trimFloat(title.Size), config.TitleLetterSpacing, trimFloat(sideMargin), trimFloat(sideMargin))
+	// Subtitle: Montserrat Bold, gold.
+	fmt.Fprintf(&b, "Style: Subtitle,Montserrat,%s,&H00%s,&H00%s,&H00000000,&HA0000000,-1,0,0,0,100,100,3,0,1,0,1,8,%s,%s,0,1\n",
+		trimFloat(config.SubtitleSize), config.GoldBGR, config.GoldBGR, trimFloat(sideMargin), trimFloat(sideMargin))
 	// Caption: Montserrat Bold on a semi-transparent black box (BorderStyle=3,
-	// box colour = BackColour; rgba(0,0,0,0.6) -> alpha 0x66).
-	b.WriteString("Style: Caption,Montserrat,42,&H00FFFFFF,&H00FFFFFF,&H66000000,&H66000000,-1,0,0,0,100,100,0,0,3,12,0,8,54,54,0,1\n\n")
+	// box colour = BackColour).
+	fmt.Fprintf(&b, "Style: Caption,Montserrat,%s,&H00FFFFFF,&H00FFFFFF,&H%s000000,&H%s000000,-1,0,0,0,100,100,0,0,3,12,0,8,%s,%s,0,1\n\n",
+		trimFloat(config.CaptionSize), config.CaptionBoxAlphaHex, config.CaptionBoxAlphaHex, trimFloat(sideMargin), trimFloat(sideMargin))
 
 	b.WriteString("[Events]\n")
 	b.WriteString("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
 
 	end := assTime(mainDuration)
-	// Title Block: title line then subtitle line below it.
-	fmt.Fprintf(&b, "Dialogue: 0,0:00:00.00,%s,Title,,0,0,0,,{\\an8\\pos(540,%s)}%s\n",
-		end, trimFloat(titleY), sanitize(strings.ToUpper(title)))
-	subY := titleY + titleSize*1.05 + subtitleGap
-	fmt.Fprintf(&b, "Dialogue: 0,0:00:00.00,%s,Subtitle,,0,0,0,,{\\an8\\pos(540,%s)}%s\n",
-		end, trimFloat(subY), sanitize(strings.ToUpper(subtitle)))
+	// Title Block: one event holding 1-2 lines, then the subtitle below it.
+	lines := make([]string, len(title.Lines))
+	for i, ln := range title.Lines {
+		lines[i] = sanitize(ln)
+	}
+	fmt.Fprintf(&b, "Dialogue: 0,0:00:00.00,%s,Title,,0,0,0,,{\\an8\\pos(%d,%s)}%s\n",
+		end, centerX, trimFloat(config.TitleY), strings.Join(lines, `\N`))
+	subY := config.TitleY + title.Size*config.TitleLineHeight*float64(len(title.Lines)) + config.SubtitleGap
+	fmt.Fprintf(&b, "Dialogue: 0,0:00:00.00,%s,Subtitle,,0,0,0,,{\\an8\\pos(%d,%s)}%s\n",
+		end, centerX, trimFloat(subY), sanitize(strings.ToUpper(subtitle)))
 
 	// Karaoke caption events.
 	for i, p := range pages {
@@ -64,8 +66,8 @@ func GenerateASS(title, subtitle string, titleSize float64, pages []Page, mainDu
 			dispEnd = mainDuration
 		}
 		for _, iv := range pageIntervals(p, dispEnd) {
-			fmt.Fprintf(&b, "Dialogue: 0,%s,%s,Caption,,0,0,0,,{\\an5\\pos(540,%s)}%s\n",
-				assTime(iv.start), assTime(iv.end), trimFloat(captionY), pageText(p, iv.active))
+			fmt.Fprintf(&b, "Dialogue: 0,%s,%s,Caption,,0,0,0,,{\\an5\\pos(%d,%s)}%s\n",
+				assTime(iv.start), assTime(iv.end), centerX, trimFloat(config.CaptionY), pageText(p, iv.active))
 		}
 	}
 	return b.String()

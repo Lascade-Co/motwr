@@ -7,9 +7,9 @@ import (
 	"html"
 	"strings"
 	"time"
-)
 
-const Voice = "en-US-GuyNeural"
+	"github.com/lascade/motwr/internal/config"
+)
 
 type WordStamp struct {
 	Text       string
@@ -77,5 +77,5 @@ func parseMetadata(body []byte) ([]WordStamp, error) {
 func buildSSML(script string) string {
 	return fmt.Sprintf("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>"+
 		"<voice name='%s'><prosody pitch='+0Hz' rate='+0%%' volume='+0%%'>%s</prosody></voice></speak>",
-		Voice, html.EscapeString(script))
+		config.TTSVoice, html.EscapeString(script))
 }

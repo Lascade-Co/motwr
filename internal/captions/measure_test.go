@@ -3,6 +3,8 @@ package captions
 import (
 	"strings"
 	"testing"
+
+	"github.com/lascade/motwr/internal/config"
 )
 
 const antonPath = "../../assets/fonts/Anton-Regular.ttf"
@@ -45,6 +47,65 @@ func TestFitTitleSizeShrinksLongTitle(t *testing.T) {
 	w, _ := TextWidth(f, "SAN FRANCISCO TO NEW YORK CITY", size, 2)
 	if w > 972 {
 		t.Fatalf("shrunk text still too wide: %.1f", w)
+	}
+}
+
+func TestLayoutTitleShortStaysOneLine(t *testing.T) {
+	f, _ := LoadFont(antonPath)
+	lay, err := LayoutTitle(f, "Kochi to Goa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lay.Lines) != 1 || lay.Lines[0] != "KOCHI TO GOA" || lay.Size != config.TitleStartSize {
+		t.Fatalf("short title must stay one line at full size, got %+v", lay)
+	}
+}
+
+func TestLayoutTitleBreaksBeforeScaling(t *testing.T) {
+	f, _ := LoadFont(antonPath)
+	// Too wide for one line at 88px, but each half fits: must break, not shrink.
+	lay, err := LayoutTitle(f, "San Francisco to New York City")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lay.Lines) != 2 {
+		t.Fatalf("want 2 lines, got %+v", lay)
+	}
+	if lay.Size != config.TitleStartSize {
+		t.Errorf("breaking should have avoided shrinking, got size %.1f", lay.Size)
+	}
+	for _, ln := range lay.Lines {
+		w, _ := TextWidth(f, ln, lay.Size, config.TitleLetterSpacing)
+		if w > config.TitleMaxWidth {
+			t.Errorf("line %q width %.1f exceeds max %.0f", ln, w, config.TitleMaxWidth)
+		}
+	}
+	if got := lay.Lines[0] + " " + lay.Lines[1]; got != "SAN FRANCISCO TO NEW YORK CITY" {
+		t.Errorf("lines lost or reordered words: %q", got)
+	}
+}
+
+func TestLayoutTitleSingleWordScales(t *testing.T) {
+	f, _ := LoadFont(antonPath)
+	// One unbreakable word wider than the frame: shrink on a single line.
+	lay, err := LayoutTitle(f, "Supercalifragilisticexpialidocious")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lay.Lines) != 1 {
+		t.Fatalf("single word cannot break, got %+v", lay)
+	}
+	if lay.Size >= config.TitleStartSize || lay.Size < config.TitleFloorSize {
+		t.Errorf("size %.1f, want shrunk within [floor, start)", lay.Size)
+	}
+}
+
+func TestLayoutTitleTooLongErrors(t *testing.T) {
+	f, _ := LoadFont(antonPath)
+	long := strings.TrimSpace(strings.Repeat("PNEUMONOULTRAMICROSCOPICSILICOVOLCANOCONIOSIS ", 3))
+	if _, err := LayoutTitle(f, long); err == nil ||
+		!strings.Contains(err.Error(), "title too long") {
+		t.Fatalf("expected 'title too long' error, got %v", err)
 	}
 }
 

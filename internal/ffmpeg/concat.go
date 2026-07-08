@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/lascade/motwr/internal/config"
 )
 
 // errConcatShort marks a verifyConcatDuration failure caused by the
@@ -89,15 +91,16 @@ func verifyConcatDuration(ctx context.Context, mainPath, outroPath, outPath stri
 		return fmt.Errorf("%w: probe concat output %s: %v", errConcatShort, outPath, err)
 	}
 
+	const tol = config.ConcatDurationTolerance
 	want := mainR.Duration + outroR.Duration
-	if want-outR.Duration > 0.5 {
+	if want-outR.Duration > tol {
 		return fmt.Errorf("%w: got %.3fs, want >= %.3fs (main %.3fs + outro %.3fs)",
-			errConcatShort, outR.Duration, want-0.5, mainR.Duration, outroR.Duration)
+			errConcatShort, outR.Duration, want-tol, mainR.Duration, outroR.Duration)
 	}
 
 	if mainR.VideoDuration > 0 && outroR.VideoDuration > 0 {
 		wantVideo := mainR.VideoDuration + outroR.VideoDuration
-		if wantVideo-outR.VideoDuration > 0.5 {
+		if wantVideo-outR.VideoDuration > tol {
 			return fmt.Errorf("%w: video stream is %.3fs, want >= %.3fs (main %.3fs + outro %.3fs) — outro video was dropped or time-squeezed",
 				errConcatShort, outR.VideoDuration, wantVideo-0.5, mainR.VideoDuration, outroR.VideoDuration)
 		}

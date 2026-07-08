@@ -11,6 +11,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/lascade/motwr/internal/config"
 )
 
 type ProbeResult struct {
@@ -67,7 +69,8 @@ func CheckAspect916(w, h int) error {
 	if w <= 0 || h <= 0 {
 		return fmt.Errorf("base video has no valid dimensions (%dx%d)", w, h)
 	}
-	if math.Abs(float64(w)/float64(h)-9.0/16.0) > 0.005 {
+	want := float64(config.OutputWidth) / float64(config.OutputHeight)
+	if math.Abs(float64(w)/float64(h)-want) > config.AspectTolerance {
 		return fmt.Errorf("base video must be 9:16 portrait, got %dx%d", w, h)
 	}
 	return nil

@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"github.com/lascade/motwr/internal/config"
 )
 
 const (
@@ -18,24 +20,22 @@ const (
 	gecVersion = "1-143.0.3650.75"
 	userAgent  = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"
 	origin     = "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold"
-	// One websocket turn only; ample for narration scripts.
-	maxScriptBytes = 32 << 10
 )
 
 // Synthesize generates the voiceover MP3 at outPath and returns word
 // timestamps. Retries transient failures 3 times.
 func Synthesize(ctx context.Context, script, outPath string) ([]WordStamp, error) {
-	if len(script) > maxScriptBytes {
-		return nil, fmt.Errorf("tts: script too long (%d bytes, max %d)", len(script), maxScriptBytes)
+	if len(script) > config.TTSMaxScriptBytes {
+		return nil, fmt.Errorf("tts: script too long (%d bytes, max %d)", len(script), config.TTSMaxScriptBytes)
 	}
 	var lastErr error
-	for attempt := range 3 {
+	for attempt := range config.TTSAttempts {
 		stamps, err := synthesizeOnce(ctx, script, outPath)
 		if err == nil {
 			return stamps, nil
 		}
 		lastErr = err
-		if attempt == 2 {
+		if attempt == config.TTSAttempts-1 {
 			break
 		}
 		select {
