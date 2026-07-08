@@ -87,6 +87,11 @@ live in one per-run temp dir, removed on exit (including on error).
    alpha channel), scale-cropped 1920×1080 → 1080×1920 cover. Each
    appearance also schedules a bird-sfx instance: `adelay` to the
    appearance start, trimmed to the clip length, fade-out, volume 0.4.
+   The sfx deliberately stays a separate file rather than being muxed
+   into the webms: it is 28.7 s against 3–13 s clips, the filter graph
+   would need to extract/delay/mix the audio stream either way, and a
+   separate file keeps volume and trim decisions in the pipeline instead
+   of baked into slow VP9-alpha re-encodes.
 7. **Main render (single ffmpeg pass)** — one filter graph:
    - video: base `setpts` ramp + scale to 1080×1920 → bird overlays
      (`overlay` + `enable=between(t,…)`) → logo top-right (40 px padding,
