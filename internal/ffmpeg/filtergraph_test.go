@@ -90,6 +90,23 @@ func TestBuildMainArgsEncodeAndDuration(t *testing.T) {
 	}
 }
 
+func TestBuildMainArgsWindowsSubtitlePaths(t *testing.T) {
+	// A Windows subtitles path carries a drive-letter colon and backslash
+	// separators. Both are special at the subtitles filter's inner option
+	// parsing level and must be escaped, or ffmpeg rejects the whole
+	// -filter_complex ("Invalid argument").
+	p := testPlan()
+	p.ASSFile = `C:\Users\jishn\AppData\Local\Temp\motwr-1\captions.ass`
+	p.FontsDir = `E:\motwr-test\assets\fonts`
+	s := strings.Join(BuildMainArgs(p), " ")
+
+	want := `subtitles=filename='C\:\\Users\\jishn\\AppData\\Local\\Temp\\motwr-1\\captions.ass':` +
+		`fontsdir='E\:\\motwr-test\\assets\\fonts',format=yuv420p`
+	if !strings.Contains(s, want) {
+		t.Errorf("windows subtitles path not escaped for inner filter parsing.\nwant substring: %s\ngot: %s", want, s)
+	}
+}
+
 func TestConcatArgs(t *testing.T) {
 	c := strings.Join(ConcatArgsCopy("/tmp/list.txt", "/tmp/out.mp4"), " ")
 	if !strings.Contains(c, "-f concat -safe 0 -i /tmp/list.txt -c copy") {

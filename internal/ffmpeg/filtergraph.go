@@ -56,7 +56,7 @@ func BuildMainArgs(p RenderPlan) []string {
 	fmt.Fprintf(&g, "[%s][logo]overlay=main_w-overlay_w-%d:%d[vlogo];",
 		cur, config.LogoPadding, config.LogoPadding)
 	fmt.Fprintf(&g, "[vlogo]subtitles=filename=%s:fontsdir=%s,format=yuv420p[vout];",
-		escapeFilterArg(p.ASSFile), escapeFilterArg(p.FontsDir))
+		escapeSubtitlesPath(p.ASSFile), escapeSubtitlesPath(p.FontsDir))
 
 	// Audio: voiceover first so amix duration=first tracks it.
 	fmt.Fprintf(&g, "[%d:a]volume=%g[avo];", voIdx, config.VoiceoverVolume)
@@ -147,4 +147,19 @@ func ConcatArgsReencode(mainPath, outroPath, outPath string) []string {
 // it's → 'it'\''s'.
 func escapeFilterArg(s string) string {
 	return "'" + strings.ReplaceAll(s, `'`, `'\''`) + "'"
+}
+
+// escapeSubtitlesPath quotes a path for use as a value of the subtitles
+// filter (filename=, fontsdir=). This needs one more level of escaping than
+// escapeFilterArg: a filter's option list is split on ':' at an inner parsing
+// level whose escape character is '\'. Outer '...' quoting protects the
+// filtergraph-level specials ([],;) but NOT this inner split, so a Windows
+// drive-letter colon (C:\...) is misread as an option separator and the path
+// separators are consumed as escapes. We escape '\' and ':' for that inner
+// level, then wrap the result in escapeFilterArg's outer quotes. POSIX paths
+// carry neither character, so their output is unchanged.
+func escapeSubtitlesPath(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `:`, `\:`)
+	return escapeFilterArg(s)
 }
