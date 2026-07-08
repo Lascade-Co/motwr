@@ -59,43 +59,36 @@ them together.
 
 ### 3. Render a video
 
-Put two files into the unzipped folder:
+You need two things:
 
-1. **Your base video** — the TravelAnimator map export (portrait 9:16),
-   e.g. `route.mp4`
-2. **A job file** — a plain-text file called `job.json` describing the
-   video (any text editor works):
-
-       {
-         "title": "Durango to Telluride",
-         "subtitle": "San Juan Skyway — 230 miles",
-         "script": "They call this the Million Dollar Highway...",
-         "vehicle": "car"
-       }
-
-   `title` and `subtitle` appear at the top of the video, `script` is read
-   aloud as the voiceover and shown as captions, and `vehicle` picks the
-   background sound — one of `car`, `boat`, `plane`, or `train`.
+1. **Your base video** — the TravelAnimator map export (portrait 9:16).
+   Copy it into the unzipped folder, e.g. as `route.mp4`.
+2. **Your job link** — the `https://…` link you were given for this video.
+   It points to the video's details (title, subtitle, narration script, and
+   vehicle) and is used as-is; there's nothing to download or edit.
 
 Then open Terminal (Mac/Linux) or PowerShell (Windows) **in that folder**
 (Mac: right-click the folder → "New Terminal at Folder"; Windows:
-shift-right-click → "Open PowerShell window here") and run:
+shift-right-click → "Open PowerShell window here") and run — replacing the
+link with your own:
 
 - Mac/Linux:
 
-      ./motwr -job job.json -video route.mp4 -o finished.mp4
+      ./motwr -job "https://example.com/jobs/1234.json" -video route.mp4 -o finished.mp4
 
 - Windows:
 
-      .\motwr.exe -job job.json -video route.mp4 -o finished.mp4
+      .\motwr.exe -job "https://example.com/jobs/1234.json" -video route.mp4 -o finished.mp4
+
+Keep the quotes around the link.
 
 Progress lines will scroll by (`==> generating voiceover`,
 `==> rendering main segment`…). After a minute or two, `finished.mp4`
 appears in the same folder — that's your video, ready to upload.
 
 If something goes wrong, the last line printed says what to fix — the most
-common issues are a base video that isn't 9:16 portrait, or ffmpeg not
-installed (step 1).
+common issues are a base video that isn't 9:16 portrait, a job link that
+was pasted incompletely or has expired, or ffmpeg not installed (step 1).
 
 ## Requirements
 
