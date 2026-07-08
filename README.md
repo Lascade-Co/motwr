@@ -5,6 +5,98 @@ TravelAnimator base video + a job JSON: edge-tts voiceover, karaoke captions,
 title block, logo, bird overlays, vehicle ambience, speed-ramped to the
 narration, brand outro appended.
 
+## Getting Started
+
+You don't need to know Go or programming to use motwr — just follow the
+three steps below. You'll need an internet connection while rendering (the
+voiceover is generated online).
+
+### 1. Install ffmpeg (one-time setup)
+
+motwr uses a free tool called **ffmpeg** to do the video work.
+
+- **Mac**: open the Terminal app and paste:
+
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      brew install ffmpeg
+
+  (The first line installs Homebrew, a Mac app installer. Skip it if you
+  already have `brew`.)
+
+- **Windows**: open PowerShell and paste:
+
+      winget install ffmpeg
+
+  Then close and reopen PowerShell so it's picked up.
+
+- **Linux (Ubuntu/Debian)**:
+
+      sudo apt install ffmpeg
+
+To check it worked, type `ffmpeg -version` — you should see version info,
+not an error.
+
+### 2. Download motwr
+
+Go to this repository's **Releases** page and download the zip for your
+computer from the latest release:
+
+| Your computer | File to download |
+|---|---|
+| Mac with Apple Silicon (M1/M2/M3/M4) | `motwr-…-darwin-arm64.zip` |
+| Mac with Intel | `motwr-…-darwin-amd64.zip` |
+| Windows | `motwr-…-windows-amd64.zip` |
+| Linux | `motwr-…-linux-amd64.zip` |
+
+Unzip it anywhere (e.g. your Desktop). The folder already contains the
+`motwr` program and an `assets` folder with all the branding media — keep
+them together.
+
+> **Mac only:** the first run may be blocked ("cannot be opened because the
+> developer cannot be verified"). Fix it once with: right-click the `motwr`
+> file → Open, or run `xattr -d com.apple.quarantine ./motwr` in Terminal
+> from inside the folder.
+
+### 3. Render a video
+
+Put two files into the unzipped folder:
+
+1. **Your base video** — the TravelAnimator map export (portrait 9:16),
+   e.g. `route.mp4`
+2. **A job file** — a plain-text file called `job.json` describing the
+   video (any text editor works):
+
+       {
+         "title": "Durango to Telluride",
+         "subtitle": "San Juan Skyway — 230 miles",
+         "script": "They call this the Million Dollar Highway...",
+         "vehicle": "car"
+       }
+
+   `title` and `subtitle` appear at the top of the video, `script` is read
+   aloud as the voiceover and shown as captions, and `vehicle` picks the
+   background sound — one of `car`, `boat`, `plane`, or `train`.
+
+Then open Terminal (Mac/Linux) or PowerShell (Windows) **in that folder**
+(Mac: right-click the folder → "New Terminal at Folder"; Windows:
+shift-right-click → "Open PowerShell window here") and run:
+
+- Mac/Linux:
+
+      ./motwr -job job.json -video route.mp4 -o finished.mp4
+
+- Windows:
+
+      .\motwr.exe -job job.json -video route.mp4 -o finished.mp4
+
+Progress lines will scroll by (`==> generating voiceover`,
+`==> rendering main segment`…). After a minute or two, `finished.mp4`
+appears in the same folder — that's your video, ready to upload.
+
+If something goes wrong, the last line printed says what to fix — the most
+common issues are a base video that isn't 9:16 portrait, or ffmpeg not
+installed (step 1).
+
 ## Requirements
 
 - Go ≥ 1.26 (build only)
