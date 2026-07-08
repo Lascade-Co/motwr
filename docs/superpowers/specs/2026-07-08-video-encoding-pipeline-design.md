@@ -81,9 +81,10 @@ live in one per-run temp dir, removed on exit (including on error).
      `#FFD700`, the rest white.
    Fonts are loaded from `assets/fonts/` via the subtitles filter's
    `fontsdir` option.
-6. **Bird schedule** — one appearance every 5 s across the main duration;
-   each appearance picks a random clip (seeded RNG) and plays its natural
-   length. Clips are decoded with `-c:v libvpx-vp9` (required to keep the
+6. **Bird schedule** — gap-based: the first appearance starts at t=0 and
+   each subsequent one starts 10 s after the previous clip ends, so
+   appearances never overlap; each appearance picks a random clip (seeded
+   RNG) and plays its natural length. Clips are decoded with `-c:v libvpx-vp9` (required to keep the
    alpha channel), scale-cropped 1920×1080 → 1080×1920 cover. Each
    appearance also schedules a bird-sfx instance: `adelay` to the
    appearance start, trimmed to the clip length, fade-out, volume 0.4.
