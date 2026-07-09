@@ -180,12 +180,14 @@ func run(ctx context.Context, o options) error {
 	// now that the final video exists. Guard against deleting the output, and
 	// only delete once the output is confirmed written. A failed delete is a
 	// warning, not an error -- the render already succeeded.
-	if o.video != o.out {
-		if fi, statErr := os.Stat(o.out); statErr == nil && fi.Size() > 0 {
-			if rmErr := os.Remove(o.video); rmErr != nil {
-				fmt.Fprintln(os.Stderr, "motwr: warning: could not delete base video:", rmErr)
-			} else {
-				step("deleted base video: " + o.video)
+	if fiOut, statErr := os.Stat(o.out); statErr == nil && fiOut.Size() > 0 {
+		if fiVid, statVidErr := os.Stat(o.video); statVidErr == nil {
+			if !os.SameFile(fiOut, fiVid) {
+				if rmErr := os.Remove(o.video); rmErr != nil {
+					fmt.Fprintln(os.Stderr, "motwr: warning: could not delete base video:", rmErr)
+				} else {
+					step("deleted base video: " + o.video)
+				}
 			}
 		}
 	}
