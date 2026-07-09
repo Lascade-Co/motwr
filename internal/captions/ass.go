@@ -9,54 +9,62 @@ import (
 	"github.com/lascade/motwr/internal/config"
 )
 
-// ASS color fragments derived from the config palette.
+// ASS inline colour overrides for dynamic caption highlighting.
 const (
 	goldInline  = `{\1c&H` + config.GoldBGR + `&}`
 	whiteInline = `{\1c&HFFFFFF&}`
 )
 
-// GenerateASS renders the full subtitle file: Title Block events plus one
-// Caption event per word-highlight interval. All layout numbers come from
-// internal/config.
+// GenerateASS renders the full subtitle file: Title Block events (one per
+// title line plus the subtitle) and dynamic word-highlighted Caption events. All
+// layout numbers come from internal/config.
 func GenerateASS(title TitleLayout, subtitle string, pages []Page, mainDuration float64) string {
 	centerX := config.OutputWidth / 2
-	sideMargin := (config.OutputWidth - config.TitleMaxWidth) / 2
 
 	var b strings.Builder
 	b.WriteString("[Script Info]\n")
 	b.WriteString("ScriptType: v4.00+\n")
 	fmt.Fprintf(&b, "PlayResX: %d\nPlayResY: %d\n", config.OutputWidth, config.OutputHeight)
-	b.WriteString("WrapStyle: 2\nScaledBorderAndShadow: yes\n\n")
+	// WrapStyle 1: greedy end-of-line wrapping (used only by captions; title
+	// lines are pre-broken by LayoutTitle and each fits its margin).
+	b.WriteString("WrapStyle: 1\nScaledBorderAndShadow: yes\n\n")
 
 	b.WriteString("[V4+ Styles]\n")
 	b.WriteString("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
-	// Title: Anton, white, slight shadow. Alignment 8 = top-center.
-	fmt.Fprintf(&b, "Style: Title,Anton,%s,&H00FFFFFF,&H00FFFFFF,&H00000000,&HA0000000,0,0,0,0,100,100,%g,0,1,0,2,8,%s,%s,0,1\n",
-		trimFloat(title.Size), config.TitleLetterSpacing, trimFloat(sideMargin), trimFloat(sideMargin))
-	// Subtitle: Montserrat Bold, gold.
-	fmt.Fprintf(&b, "Style: Subtitle,Montserrat,%s,&H00%s,&H00%s,&H00000000,&HA0000000,-1,0,0,0,100,100,3,0,1,0,1,8,%s,%s,0,1\n",
-		trimFloat(config.SubtitleSize), config.GoldBGR, config.GoldBGR, trimFloat(sideMargin), trimFloat(sideMargin))
-	// Caption: Montserrat Bold on a semi-transparent black box (BorderStyle=3,
-	// box colour = BackColour).
-	fmt.Fprintf(&b, "Style: Caption,Montserrat,%s,&H00FFFFFF,&H00FFFFFF,&H%s000000,&H%s000000,-1,0,0,0,100,100,0,0,3,12,0,8,%s,%s,0,1\n\n",
-		trimFloat(config.CaptionSize), config.CaptionBoxAlphaHex, config.CaptionBoxAlphaHex, trimFloat(sideMargin), trimFloat(sideMargin))
+	// Title: rounded Fredoka, white with a heavy black outline + drop shadow.
+	// Alignment 8 = top-center.
+	fmt.Fprintf(&b, "Style: Title,%s,%s,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,%g,0,1,%g,%g,8,%s,%s,0,1\n",
+		config.TitleFont, trimFloat(title.Size), config.TitleLetterSpacing,
+		config.TitleOutline, config.TitleShadow, trimFloat(config.TitleMargin), trimFloat(config.TitleMargin))
+	// Subtitle: Montserrat Bold, gold, uppercase.
+	fmt.Fprintf(&b, "Style: Subtitle,Montserrat,%s,&H00%s,&H00%s,&H00000000,&H00000000,-1,0,0,0,100,100,3,0,1,%g,0,8,%s,%s,0,1\n",
+		trimFloat(config.SubtitleSize), config.GoldBGR, config.GoldBGR,
+		config.SubtitleOutline, trimFloat(config.TitleMargin), trimFloat(config.TitleMargin))
+	// Caption: Poppins (already bold + italic in the font), white, outlined,
+	// no box. Alignment 5 = middle-center; long pages wrap within the margin.
+	fmt.Fprintf(&b, "Style: Caption,%s,%s,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,%g,0,1,%g,%g,5,%s,%s,0,1\n\n",
+		config.CaptionFont, trimFloat(config.CaptionSize), config.CaptionLetterSpacing,
+		config.CaptionOutline, config.CaptionShadow, trimFloat(config.CaptionMargin), trimFloat(config.CaptionMargin))
 
 	b.WriteString("[Events]\n")
 	b.WriteString("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
 
 	end := assTime(mainDuration)
-	// Title Block: one event holding 1-2 lines, then the subtitle below it.
-	lines := make([]string, len(title.Lines))
+	// Title Block: each line is its own top-anchored event so the vertical
+	// advance is exactly title.Size*TitleLineHeight (tight, per the reference).
+	advance := title.Size * config.TitleLineHeight
 	for i, ln := range title.Lines {
-		lines[i] = sanitize(ln)
+		y := config.TitleY + advance*float64(i)
+		fmt.Fprintf(&b, "Dialogue: 0,0:00:00.00,%s,Title,,0,0,0,,{\\an8\\pos(%d,%s)}%s\n",
+			end, centerX, trimFloat(y), sanitize(ln))
 	}
-	fmt.Fprintf(&b, "Dialogue: 0,0:00:00.00,%s,Title,,0,0,0,,{\\an8\\pos(%d,%s)}%s\n",
-		end, centerX, trimFloat(config.TitleY), strings.Join(lines, `\N`))
-	subY := config.TitleY + title.Size*config.TitleLineHeight*float64(len(title.Lines)) + config.SubtitleGap
+	subY := config.TitleY + advance*float64(len(title.Lines)) + config.SubtitleGap
 	fmt.Fprintf(&b, "Dialogue: 0,0:00:00.00,%s,Subtitle,,0,0,0,,{\\an8\\pos(%d,%s)}%s\n",
 		end, centerX, trimFloat(subY), sanitize(strings.ToUpper(subtitle)))
 
-	// Karaoke caption events.
+	// Dynamic caption events: the whole page stays on screen while the word
+	// being spoken is highlighted gold (the rest white), sliced at every word
+	// start/end so the highlight tracks the voiceover.
 	for i, p := range pages {
 		dispEnd := p.Words[len(p.Words)-1].End
 		if next := i + 1; next < len(pages) && pages[next].Start() < dispEnd {
@@ -75,7 +83,7 @@ func GenerateASS(title TitleLayout, subtitle string, pages []Page, mainDuration 
 
 type interval struct {
 	start, end float64
-	active     int // index into page words, -1 = none
+	active     int // index into page words, -1 = none (inter-word gap)
 }
 
 // pageIntervals slices [pageStart, dispEnd] at every word start/end so each
@@ -108,6 +116,7 @@ func pageIntervals(p Page, dispEnd float64) []interval {
 	return out
 }
 
+// pageText renders a page's words, the active one gold and the rest white.
 func pageText(p Page, active int) string {
 	parts := make([]string, len(p.Words))
 	for i, w := range p.Words {

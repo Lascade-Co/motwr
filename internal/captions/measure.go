@@ -1,11 +1,12 @@
 // Package captions turns word timestamps into caption pages and generates
-// the ASS subtitle file (title block + karaoke captions).
+// the ASS subtitle file (title block + dynamic word-highlighted captions).
 package captions
 
 import (
 	"fmt"
 	"math"
 	"os"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -15,6 +16,11 @@ import (
 
 	"github.com/lascade/motwr/internal/config"
 )
+
+// parenthetical matches a "(...)" group (and the space before it) so the
+// title can drop trailing qualifiers: "Durango to Telluride (San Juan
+// Skyway)" -> "Durango to Telluride".
+var parenthetical = regexp.MustCompile(`\s*\([^)]*\)`)
 
 func LoadFont(path string) (*sfnt.Font, error) {
 	b, err := os.ReadFile(path)
@@ -52,13 +58,17 @@ type TitleLayout struct {
 	Size  float64
 }
 
-// LayoutTitle fits a title. It stays a single line at TitleStartSize when it
-// fits; otherwise it first breaks into two lines at the most balanced word
-// boundary (breaking happens only when necessary), and only then shrinks the
-// font to fit the widest line — TitleFloorSize is the limit, below which the
-// title is rejected. A single unbreakable word skips straight to shrinking.
+// LayoutTitle fits a title. The title is uppercased. It stays a single line
+// at TitleStartSize when it fits; otherwise it first breaks into two lines
+// (breaking happens only when necessary), and only then shrinks the font to
+// fit the widest line — TitleFloorSize is the limit, below which the title is
+// rejected. A single unbreakable word skips straight to shrinking.
 func LayoutTitle(f *sfnt.Font, title string) (TitleLayout, error) {
-	upper := strings.ToUpper(strings.Join(strings.Fields(title), " "))
+	cleaned := parenthetical.ReplaceAllString(title, "")
+	if strings.TrimSpace(cleaned) == "" {
+		cleaned = title // title was entirely parenthetical; keep it rather than blank
+	}
+	upper := strings.ToUpper(strings.Join(strings.Fields(cleaned), " "))
 	w, err := TextWidth(f, upper, config.TitleStartSize, config.TitleLetterSpacing)
 	if err != nil {
 		return TitleLayout{}, err
@@ -77,10 +87,15 @@ func LayoutTitle(f *sfnt.Font, title string) (TitleLayout, error) {
 		return TitleLayout{Lines: []string{upper}, Size: size}, nil
 	}
 
-	// Pick the two-line break that minimizes the wider line's width.
-	bestWidth := math.Inf(1)
-	var bestLines []string
-	var widerLine string
+	// Pick the most balanced *top-heavy* two-line break: among breaks whose
+	// first line is at least as wide as the second, take the one with the
+	// narrowest first line. This keeps the heading top-heavy — "KEY LARGO TO"
+	// / "KEY WEST" rather than the strictly-minimal-wider "KEY LARGO" / "TO
+	// KEY WEST", which reads bottom-heavy. A minWider fallback covers the rare
+	// case where every break is bottom-heavy (a very long final word).
+	topWidth, minWider := math.Inf(1), math.Inf(1)
+	var topLines, fbLines []string
+	var topWiderLine, fbWiderLine string
 	for i := 1; i < len(words); i++ {
 		l1 := strings.Join(words[:i], " ")
 		l2 := strings.Join(words[i:], " ")
@@ -96,9 +111,16 @@ func LayoutTitle(f *sfnt.Font, title string) (TitleLayout, error) {
 		if w2 > w1 {
 			wide, wideLine = w2, l2
 		}
-		if wide < bestWidth {
-			bestWidth, bestLines, widerLine = wide, []string{l1, l2}, wideLine
+		if wide < minWider {
+			minWider, fbLines, fbWiderLine = wide, []string{l1, l2}, wideLine
 		}
+		if w1 >= w2 && w1 < topWidth {
+			topWidth, topLines, topWiderLine = w1, []string{l1, l2}, l1
+		}
+	}
+	bestLines, widerLine := topLines, topWiderLine
+	if bestLines == nil {
+		bestLines, widerLine = fbLines, fbWiderLine
 	}
 
 	size, err := FitTitleSize(f, widerLine, config.TitleMaxWidth,

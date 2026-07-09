@@ -7,10 +7,10 @@ import (
 	"github.com/lascade/motwr/internal/config"
 )
 
-const antonPath = "../../assets/fonts/Anton-Regular.ttf"
+const titleFontPath = "../../assets/fonts/Fredoka-Bold.ttf"
 
 func TestTextWidthPositiveAndMonotonic(t *testing.T) {
-	f, err := LoadFont(antonPath)
+	f, err := LoadFont(titleFontPath)
 	if err != nil {
 		t.Fatalf("LoadFont: %v", err)
 	}
@@ -28,7 +28,7 @@ func TestTextWidthPositiveAndMonotonic(t *testing.T) {
 }
 
 func TestFitTitleSizeShortTitleKeepsStartSize(t *testing.T) {
-	f, _ := LoadFont(antonPath)
+	f, _ := LoadFont(titleFontPath)
 	size, err := FitTitleSize(f, "GOA", 972, 88, 48, 2)
 	if err != nil || size != 88 {
 		t.Fatalf("size=%v err=%v, want 88", size, err)
@@ -36,7 +36,7 @@ func TestFitTitleSizeShortTitleKeepsStartSize(t *testing.T) {
 }
 
 func TestFitTitleSizeShrinksLongTitle(t *testing.T) {
-	f, _ := LoadFont(antonPath)
+	f, _ := LoadFont(titleFontPath)
 	size, err := FitTitleSize(f, "SAN FRANCISCO TO NEW YORK CITY", 972, 88, 48, 2)
 	if err != nil {
 		t.Fatal(err)
@@ -51,7 +51,7 @@ func TestFitTitleSizeShrinksLongTitle(t *testing.T) {
 }
 
 func TestLayoutTitleShortStaysOneLine(t *testing.T) {
-	f, _ := LoadFont(antonPath)
+	f, _ := LoadFont(titleFontPath)
 	lay, err := LayoutTitle(f, "Kochi to Goa")
 	if err != nil {
 		t.Fatal(err)
@@ -61,9 +61,10 @@ func TestLayoutTitleShortStaysOneLine(t *testing.T) {
 	}
 }
 
-func TestLayoutTitleBreaksBeforeScaling(t *testing.T) {
-	f, _ := LoadFont(antonPath)
-	// Too wide for one line at 88px, but each half fits: must break, not shrink.
+func TestLayoutTitleBreaksTopHeavyBeforeScaling(t *testing.T) {
+	f, _ := LoadFont(titleFontPath)
+	// Too wide for one line at the start size, but each half fits: must break
+	// (not shrink), and break top-heavy — the first line is the wider one.
 	lay, err := LayoutTitle(f, "San Francisco to New York City")
 	if err != nil {
 		t.Fatal(err)
@@ -74,19 +75,33 @@ func TestLayoutTitleBreaksBeforeScaling(t *testing.T) {
 	if lay.Size != config.TitleStartSize {
 		t.Errorf("breaking should have avoided shrinking, got size %.1f", lay.Size)
 	}
-	for _, ln := range lay.Lines {
-		w, _ := TextWidth(f, ln, lay.Size, config.TitleLetterSpacing)
-		if w > config.TitleMaxWidth {
-			t.Errorf("line %q width %.1f exceeds max %.0f", ln, w, config.TitleMaxWidth)
-		}
+	w1, _ := TextWidth(f, lay.Lines[0], lay.Size, config.TitleLetterSpacing)
+	w2, _ := TextWidth(f, lay.Lines[1], lay.Size, config.TitleLetterSpacing)
+	if w1 < w2 {
+		t.Errorf("first line must be the wider (top-heavy): w1=%.1f w2=%.1f", w1, w2)
+	}
+	if w1 > config.TitleMaxWidth {
+		t.Errorf("wider line %.1f exceeds max %.0f", w1, config.TitleMaxWidth)
 	}
 	if got := lay.Lines[0] + " " + lay.Lines[1]; got != "SAN FRANCISCO TO NEW YORK CITY" {
 		t.Errorf("lines lost or reordered words: %q", got)
 	}
 }
 
+func TestLayoutTitleDropsParenthetical(t *testing.T) {
+	f, _ := LoadFont(titleFontPath)
+	lay, err := LayoutTitle(f, "Durango to Telluride (San Juan Skyway)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(lay.Lines, " ")
+	if joined != "DURANGO TO TELLURIDE" {
+		t.Errorf("parenthetical qualifier not dropped, got %q", joined)
+	}
+}
+
 func TestLayoutTitleSingleWordScales(t *testing.T) {
-	f, _ := LoadFont(antonPath)
+	f, _ := LoadFont(titleFontPath)
 	// One unbreakable word wider than the frame: shrink on a single line.
 	lay, err := LayoutTitle(f, "Supercalifragilisticexpialidocious")
 	if err != nil {
@@ -101,7 +116,7 @@ func TestLayoutTitleSingleWordScales(t *testing.T) {
 }
 
 func TestLayoutTitleTooLongErrors(t *testing.T) {
-	f, _ := LoadFont(antonPath)
+	f, _ := LoadFont(titleFontPath)
 	long := strings.TrimSpace(strings.Repeat("PNEUMONOULTRAMICROSCOPICSILICOVOLCANOCONIOSIS ", 3))
 	if _, err := LayoutTitle(f, long); err == nil ||
 		!strings.Contains(err.Error(), "title too long") {
@@ -110,7 +125,7 @@ func TestLayoutTitleTooLongErrors(t *testing.T) {
 }
 
 func TestFitTitleSizeFloorErrors(t *testing.T) {
-	f, _ := LoadFont(antonPath)
+	f, _ := LoadFont(titleFontPath)
 	long := strings.Repeat("VERY LONG TITLE ", 8)
 	if _, err := FitTitleSize(f, long, 972, 88, 48, 2); err == nil ||
 		!strings.Contains(err.Error(), "title too long") {

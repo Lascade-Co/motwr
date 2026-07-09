@@ -88,12 +88,13 @@ func run(ctx context.Context, o options) error {
 		return err
 	}
 
-	// Title must fit before we spend time on TTS.
-	antonFont, err := captions.LoadFont(a.fontAnton)
+	// Title must fit before we spend time on TTS. Titles render in the title
+	// face, so LayoutTitle measures against that font.
+	titleFont, err := captions.LoadFont(a.fontTitle)
 	if err != nil {
 		return err
 	}
-	titleLayout, err := captions.LayoutTitle(antonFont, j.Title)
+	titleLayout, err := captions.LayoutTitle(titleFont, j.Title)
 	if err != nil {
 		return err
 	}
@@ -173,21 +174,40 @@ func run(ctx context.Context, o options) error {
 	if err := ffmpeg.Concat(ctx, mainPath, a.outro, o.out); err != nil {
 		return err
 	}
+
+	// 9. Delete the Base Video ------------------------------------------------------
+	// The base video is a single-use input (regenerated per job); remove it
+	// now that the final video exists. Guard against deleting the output, and
+	// only delete once the output is confirmed written. A failed delete is a
+	// warning, not an error -- the render already succeeded.
+	if o.video != o.out {
+		if fi, statErr := os.Stat(o.out); statErr == nil && fi.Size() > 0 {
+			if rmErr := os.Remove(o.video); rmErr != nil {
+				fmt.Fprintln(os.Stderr, "motwr: warning: could not delete base video:", rmErr)
+			} else {
+				step("deleted base video: " + o.video)
+			}
+		}
+	}
+
 	step("done: " + o.out)
 	return nil
 }
 
 type assets struct {
-	birds                     []string
-	background, birdSFX       string
-	logo, outro               string
-	fontsDir                  string
-	fontAnton, fontMontserrat string
+	birds               []string
+	background, birdSFX string
+	logo, outro         string
+	fontsDir            string
+	// fontTitle is the title face (also measured by LayoutTitle); fontCaption
+	// and fontMontserrat are loaded by libass from fontsDir at render time.
+	fontTitle, fontCaption, fontMontserrat string
 }
 
 func (a assets) all() []string {
 	return append(append([]string{}, a.birds...),
-		a.background, a.birdSFX, a.logo, a.outro, a.fontAnton, a.fontMontserrat)
+		a.background, a.birdSFX, a.logo, a.outro,
+		a.fontTitle, a.fontCaption, a.fontMontserrat)
 }
 
 func assetPaths(dir string, v job.Vehicle) assets {
@@ -202,7 +222,8 @@ func assetPaths(dir string, v job.Vehicle) assets {
 		logo:           filepath.Join(dir, "logo.png"),
 		outro:          filepath.Join(dir, "outro.mp4"),
 		fontsDir:       filepath.Join(dir, "fonts"),
-		fontAnton:      filepath.Join(dir, "fonts", "Anton-Regular.ttf"),
+		fontTitle:      filepath.Join(dir, "fonts", "Anton-Regular.ttf"),
+		fontCaption:    filepath.Join(dir, "fonts", "Poppins-Caption.ttf"),
 		fontMontserrat: filepath.Join(dir, "fonts", "Montserrat-Bold.ttf"),
 	}
 }

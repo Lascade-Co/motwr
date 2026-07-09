@@ -63,5 +63,9 @@ func TestEndToEnd(t *testing.T) {
 		t.Errorf("video stream %.2fs much shorter than container %.2fs — outro video missing",
 			r.VideoDuration, r.Duration)
 	}
+	// The base video is deleted on a successful render.
+	if _, err := os.Stat(base); !os.IsNotExist(err) {
+		t.Errorf("base video %s should have been deleted after a successful render (stat err=%v)", base, err)
+	}
 	fmt.Println("E2E output at", out, "- open it to verify visually")
 }
