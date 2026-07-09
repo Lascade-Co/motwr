@@ -7,7 +7,7 @@ import (
 	"github.com/lascade/motwr/internal/config"
 )
 
-const titleFontPath = "../../assets/fonts/Fredoka-Bold.ttf"
+const titleFontPath = "../../assets/fonts/Anton-Regular.ttf"
 
 func TestTextWidthPositiveAndMonotonic(t *testing.T) {
 	f, err := LoadFont(titleFontPath)
