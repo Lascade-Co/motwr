@@ -1,6 +1,8 @@
 /motwr
+*.exe
 .DS_Store
 .idea/
 .superpowers/
 samples/*.mp4
 out.mp4
+/dist/

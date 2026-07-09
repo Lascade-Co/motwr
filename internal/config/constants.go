@@ -37,45 +37,76 @@ const (
 // Title block (top-center heading)
 // ---------------------------------------------------------------------------
 const (
+	// TitleFont is the ASS family name of the title face. Anton — the tall
+	// condensed brand display face — rendered uppercase.
+	TitleFont = "Anton"
+
 	// The title starts at TitleStartSize px. If it doesn't fit within
-	// TitleMaxWidth it first breaks into two lines at the most balanced word
-	// boundary, and only then shrinks; below TitleFloorSize the job is
-	// rejected as "title too long".
-	TitleStartSize = 88.0
+	// TitleMaxWidth it first breaks into two lines (top-heavy), and only then
+	// shrinks; below TitleFloorSize the job is rejected as "title too long".
+	// 170 fills most of the frame width for a typical 2-3 word title, like
+	// the reference; longer titles wrap and, only if needed, shrink.
+	TitleStartSize = 170.0
 	TitleFloorSize = 48.0
-	TitleMaxWidth  = 972.0 // 90% of OutputWidth
+	// TitleMaxWidth is the fitting budget in font-metric space (not rendered
+	// pixels). LayoutTitle measures advance widths with golang.org/x/image,
+	// whose metric for Anton runs ~1.71x its libass render; 1640 metric px
+	// therefore corresponds to the 972 px usable width left by TitleMargin
+	// (972 * 1.71). Keeping the budget honest lets a big single-line title
+	// fill the frame instead of wrapping prematurely.
+	TitleMaxWidth = 1640.0
+	// TitleMargin is the left/right ASS margin (rendered px) for the title and
+	// subtitle. 1080 - 2*54 = 972 px usable.
+	TitleMargin = 54.0
 
 	// TitleLetterSpacing is extra px between characters (ASS \fsp).
 	TitleLetterSpacing = 2.0
 	// TitleY is the distance from the frame top to the title's top edge.
 	TitleY = 200.0
 	// TitleLineHeight is the per-line vertical advance as a multiple of the
-	// font size (used to place line 2 and the subtitle).
-	TitleLineHeight = 1.05
+	// font size; used to place line 2 and the subtitle. Tight (Anton's caps
+	// have no descenders) so a two-line heading doesn't gap open.
+	TitleLineHeight = 0.75
+	// TitleOutline/TitleShadow are the ASS border and drop-shadow widths (px).
+	TitleOutline = 0.0
+	TitleShadow  = 2.0
 
-	// Subtitle (gold second line) size and its gap below the title.
-	SubtitleSize = 32.0
-	SubtitleGap  = 18.0
+	// Subtitle (gold line) size, its gap below the title, and outline width.
+	SubtitleSize    = 56.0
+	SubtitleGap     = 20.0
+	SubtitleOutline = 2.0
 )
 
 // ---------------------------------------------------------------------------
-// Karaoke captions
+// Captions
 // ---------------------------------------------------------------------------
 const (
-	CaptionSize = 42.0
-	// CaptionY is the vertical center of the caption pill (lower-middle,
-	// TikTok-style: ~65% of frame height).
-	CaptionY = 1250.0
+	// CaptionFont is the ASS family name of the caption face (a Poppins Bold
+	// Italic instance, family-renamed so libass uses it as-is — real italic,
+	// not faux). Rendered white with a gold word-by-word highlight, outlined,
+	// no box.
+	CaptionFont = "Poppins Caption"
+
+	CaptionSize = 66.0
+	// CaptionY is the vertical center of the caption block (lower-middle,
+	// TikTok-style: ~63% of frame height).
+	CaptionY = 1210.0
+	// CaptionMargin is the left/right ASS margin (px). 1080 - 2*300 = 480 px
+	// usable, so a multi-word page wraps to two lines like the reference.
+	CaptionMargin = 300.0
+	// CaptionOutline/CaptionShadow are the ASS border and drop-shadow widths.
+	CaptionOutline = 5.0
+	CaptionShadow  = 3.0
+	// CaptionLetterSpacing is extra px between characters (ASS \fsp).
+	CaptionLetterSpacing = 1.0
+
 	// MaxPageDur: words starting within this window of a page's first word
 	// share that caption page.
 	MaxPageDur = 1.2
 
-	// GoldBGR is the highlight/subtitle color in ASS BBGGRR hex order
+	// GoldBGR is the subtitle color in ASS BBGGRR hex order
 	// (#FFD700 gold -> blue=00, green=D7, red=FF).
 	GoldBGR = "00D7FF"
-	// CaptionBoxAlphaHex is the ASS alpha of the caption pill background
-	// (00 = opaque, FF = invisible; 66 ≈ rgba(0,0,0,0.6)).
-	CaptionBoxAlphaHex = "66"
 )
 
 // ---------------------------------------------------------------------------
