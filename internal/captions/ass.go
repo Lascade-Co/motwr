@@ -31,18 +31,19 @@ func GenerateASS(title TitleLayout, subtitle string, pages []Page, mainDuration 
 
 	b.WriteString("[V4+ Styles]\n")
 	b.WriteString("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
-	// Title: rounded Fredoka, white with a heavy black outline + drop shadow.
-	// Alignment 8 = top-center.
+	// Title (heading): Realist Clostan Black, white with a heavy black outline
+	// + drop shadow. Alignment 8 = top-center.
 	fmt.Fprintf(&b, "Style: Title,%s,%s,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,%g,0,1,%g,%g,8,%s,%s,0,1\n",
 		config.TitleFont, trimFloat(title.Size), config.TitleLetterSpacing,
 		config.TitleOutline, config.TitleShadow, trimFloat(config.TitleMargin), trimFloat(config.TitleMargin))
-	// Subtitle: Montserrat Bold, gold, uppercase.
-	fmt.Fprintf(&b, "Style: Subtitle,Montserrat,%s,&H00%s,&H00%s,&H00000000,&H00000000,-1,0,0,0,100,100,3,0,1,%g,0,8,%s,%s,0,1\n",
-		trimFloat(config.SubtitleSize), config.GoldBGR, config.GoldBGR,
+	// Subtitle (sub-heading): Bebas Neue, gold, uppercase.
+	fmt.Fprintf(&b, "Style: Subtitle,%s,%s,&H00%s,&H00%s,&H00000000,&H00000000,-1,0,0,0,100,100,3,0,1,%g,0,8,%s,%s,0,1\n",
+		config.SubtitleFont, trimFloat(config.SubtitleSize), config.GoldBGR, config.GoldBGR,
 		config.SubtitleOutline, trimFloat(config.TitleMargin), trimFloat(config.TitleMargin))
-	// Caption: Poppins (already bold + italic in the font), white, outlined,
-	// no box. Alignment 5 = middle-center; long pages wrap within the margin.
-	fmt.Fprintf(&b, "Style: Caption,%s,%s,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,%g,0,1,%g,%g,5,%s,%s,0,1\n\n",
+	// Caption: Quicksand Bold, white, with a simple black outline and no
+	// drop shadow. Bold flag (-1) makes libass pick Quicksand-Bold.ttf.
+	// Alignment 5 = middle-center; long pages wrap within the margin.
+	fmt.Fprintf(&b, "Style: Caption,%s,%s,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,%g,0,1,%g,%g,5,%s,%s,0,1\n\n",
 		config.CaptionFont, trimFloat(config.CaptionSize), config.CaptionLetterSpacing,
 		config.CaptionOutline, config.CaptionShadow, trimFloat(config.CaptionMargin), trimFloat(config.CaptionMargin))
 

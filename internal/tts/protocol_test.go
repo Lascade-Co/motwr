@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/lascade/motwr/internal/config"
 )
 
 func TestSplitTextMessage(t *testing.T) {
@@ -66,7 +68,7 @@ func TestSSMLEscapesScript(t *testing.T) {
 	if want := "Fish &amp; chips &lt;fast&gt;"; !strings.Contains(s, want) {
 		t.Errorf("ssml %q missing %q", s, want)
 	}
-	if !strings.Contains(s, "en-US-GuyNeural") {
-		t.Error("ssml missing hardcoded voice")
+	if !strings.Contains(s, config.TTSVoice) {
+		t.Error("ssml missing configured voice")
 	}
 }

@@ -201,15 +201,16 @@ type assets struct {
 	background, birdSFX string
 	logo, outro         string
 	fontsDir            string
-	// fontTitle is the title face (also measured by LayoutTitle); fontCaption
-	// and fontMontserrat are loaded by libass from fontsDir at render time.
-	fontTitle, fontCaption, fontMontserrat string
+	// fontTitle is the title (heading) face, also measured by LayoutTitle;
+	// fontCaption and fontSubtitle are loaded by libass from fontsDir at
+	// render time (matched by their internal family name).
+	fontTitle, fontCaption, fontSubtitle string
 }
 
 func (a assets) all() []string {
 	return append(append([]string{}, a.birds...),
 		a.background, a.birdSFX, a.logo, a.outro,
-		a.fontTitle, a.fontCaption, a.fontMontserrat)
+		a.fontTitle, a.fontCaption, a.fontSubtitle)
 }
 
 func assetPaths(dir string, v job.Vehicle) assets {
@@ -223,9 +224,9 @@ func assetPaths(dir string, v job.Vehicle) assets {
 		birdSFX:        filepath.Join(dir, "bird-sfx.mp3"),
 		logo:           filepath.Join(dir, "logo.png"),
 		outro:          filepath.Join(dir, "outro.mp4"),
-		fontsDir:       filepath.Join(dir, "fonts"),
-		fontTitle:      filepath.Join(dir, "fonts", "Anton-Regular.ttf"),
-		fontCaption:    filepath.Join(dir, "fonts", "Poppins-Caption.ttf"),
-		fontMontserrat: filepath.Join(dir, "fonts", "Montserrat-Bold.ttf"),
+		fontsDir:     filepath.Join(dir, "fonts"),
+		fontTitle:    filepath.Join(dir, "fonts", "RealistClostan-Black.ttf"),
+		fontCaption:  filepath.Join(dir, "fonts", "Quicksand-Bold.ttf"),
+		fontSubtitle: filepath.Join(dir, "fonts", "BebasNeue-Regular.ttf"),
 	}
 }

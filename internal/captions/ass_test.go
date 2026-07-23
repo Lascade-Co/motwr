@@ -22,18 +22,17 @@ func TestGenerateASSHeaderAndStyles(t *testing.T) {
 	out := GenerateASS(oneLine("Kochi to Goa", config.TitleStartSize), "1,200 km by road", testPages(), 30)
 	for _, want := range []string{
 		"PlayResX: 1080", "PlayResY: 1920", "WrapStyle: 1",
-		"Style: Title,Anton,170,",
-		"Style: Subtitle,Montserrat,56,",
-		"Style: Caption,Poppins Caption,66,",
+		"Style: Title," + config.TitleFont + ",170,",
+		"Style: Subtitle," + config.SubtitleFont + ",56,",
+		"Style: Caption," + config.CaptionFont + ",72.6,",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	// Caption is white on a black outline (no box). The Poppins face is
-	// already bold+italic, so the style flags stay Bold=0,Italic=0.
-	if !strings.Contains(out, "Style: Caption,Poppins Caption,66,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,") {
-		t.Error("caption style not white/outlined without a box")
+	// Caption is white on a black outline (no box); style flags Bold=-1,Italic=0.
+	if !strings.Contains(out, "Style: Caption,"+config.CaptionFont+",72.6,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,") {
+		t.Error("caption style not white/bold/outlined without a box")
 	}
 }
 
