@@ -9,14 +9,14 @@ import (
 
 func testPlan() RenderPlan {
 	return RenderPlan{
-		BaseVideo:  "/tmp/base.mp4",
-		Logo:       "/a/logo.png",
-		Voiceover:  "/tmp/vo.mp3",
-		Background: "/a/background/car.mp3",
-		BirdSFX:    "/a/bird-sfx.mp3",
-		ASSFile:    "/tmp/captions.ass",
-		FontsDir:   "/a/fonts",
-		OutPath:    "/tmp/main.mp4",
+		BaseVideo:     "/tmp/base.mp4",
+		Logo:          "/a/logo.png",
+		Voiceover:     "/tmp/vo.mp3",
+		Background:    "/a/background/car.mp3",
+		BirdSFX:       "/a/bird-sfx.mp3",
+		ASSFile:       "/tmp/captions.ass",
+		FontsDir:      "/a/fonts",
+		OutPath:       "/tmp/main.mp4",
 		BirdClipPaths: []string{"/a/bird/2.webm", "/a/bird/0.webm"},
 		Appearances: []schedule.Appearance{
 			{Clip: 2, Start: 0, End: 4.366},
@@ -50,25 +50,42 @@ func TestBuildMainArgsInputOrder(t *testing.T) {
 func TestBuildMainArgsFilterGraph(t *testing.T) {
 	s := argsJoined(t)
 	for _, want := range []string{
-		"setpts=1.250000*PTS",                    // uniform speed ramp
-		"scale=1080:1920",                        // base scaled to output
-		"fps=30",                                 //
+		"setpts=1.250000*PTS", // uniform speed ramp
+		"scale=1080:1920",     // base scaled to output
+		"fps=30",              //
 		"force_original_aspect_ratio=increase,crop=1080:1920", // bird cover-crop
-		"enable='between(t,0.000,4.366)'",        // first appearance window
-		"enable='between(t,14.366,17.399)'",      // second appearance window
-		"eof_action=pass",                        // chain continues after bird ends
-		"overlay=main_w-overlay_w-40:40",         // logo top-right
+		"enable='between(t,0.000,4.366)'",                     // first appearance window
+		"enable='between(t,14.366,17.399)'",                   // second appearance window
+		"eof_action=pass",                                     // chain continues after bird ends
+		"overlay=main_w-overlay_w-40:40",                      // logo top-right
 		"subtitles=filename='/tmp/captions.ass':fontsdir='/a/fonts'",
-		"volume=1.5",                             // voiceover boost
-		"volume=0.3",                             // ambience level
-		"volume=0.4",                             // sfx level
-		"adelay=delays=14366:all=1",              // 2nd sfx delayed to its bird
+		"volume=1.5",                // voiceover boost
+		"volume=0.3",                // ambience level
+		"volume=0.4",                // sfx level
+		"adelay=delays=14366:all=1", // 2nd sfx delayed to its bird
 		"amix=inputs=4:duration=first:dropout_transition=0:normalize=0",
 		"format=yuv420p",
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("args missing %q", want)
 		}
+	}
+}
+
+func TestBuildMainArgsSpotlight(t *testing.T) {
+	s := argsJoined(t)
+	// The spotlight is enabled by default: a geq step must sit on the base
+	// chain before the bird/logo overlays, with its expression single-quoted so
+	// the ',' and ';' inside are not parsed as filtergraph separators.
+	if !strings.Contains(s, "[v0]geq=lum='") {
+		t.Error("spotlight geq must follow the base [v0] chain")
+	}
+	if !strings.Contains(s, "[vspot]") {
+		t.Error("spotlight output label [vspot] missing")
+	}
+	// geq must precede the first overlay (bird/logo), i.e. only the map is dimmed.
+	if gi, oi := strings.Index(s, "geq=lum="), strings.Index(s, "overlay="); gi < 0 || oi < 0 || gi > oi {
+		t.Error("spotlight geq must come before the first overlay")
 	}
 }
 

@@ -7,7 +7,8 @@ import (
 	"github.com/lascade/motwr/internal/config"
 )
 
-const titleFontPath = "../../assets/fonts/Anton-Regular.ttf"
+// The title (heading) face the pipeline actually renders and measures.
+const titleFontPath = "../../assets/fonts/RealistClostan-Black.ttf"
 
 func TestTextWidthPositiveAndMonotonic(t *testing.T) {
 	f, err := LoadFont(titleFontPath)
@@ -52,11 +53,11 @@ func TestFitTitleSizeShrinksLongTitle(t *testing.T) {
 
 func TestLayoutTitleShortStaysOneLine(t *testing.T) {
 	f, _ := LoadFont(titleFontPath)
-	lay, err := LayoutTitle(f, "Kochi to Goa")
+	lay, err := LayoutTitle(f, "Rio to Lima")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(lay.Lines) != 1 || lay.Lines[0] != "KOCHI TO GOA" || lay.Size != config.TitleStartSize {
+	if len(lay.Lines) != 1 || lay.Lines[0] != "RIO TO LIMA" || lay.Size != config.TitleStartSize {
 		t.Fatalf("short title must stay one line at full size, got %+v", lay)
 	}
 }
@@ -65,7 +66,7 @@ func TestLayoutTitleBreaksTopHeavyBeforeScaling(t *testing.T) {
 	f, _ := LoadFont(titleFontPath)
 	// Too wide for one line at the start size, but each half fits: must break
 	// (not shrink), and break top-heavy — the first line is the wider one.
-	lay, err := LayoutTitle(f, "San Francisco to New York City")
+	lay, err := LayoutTitle(f, "Kochi to Goa")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +84,7 @@ func TestLayoutTitleBreaksTopHeavyBeforeScaling(t *testing.T) {
 	if w1 > config.TitleMaxWidth {
 		t.Errorf("wider line %.1f exceeds max %.0f", w1, config.TitleMaxWidth)
 	}
-	if got := lay.Lines[0] + " " + lay.Lines[1]; got != "SAN FRANCISCO TO NEW YORK CITY" {
+	if got := lay.Lines[0] + " " + lay.Lines[1]; got != "KOCHI TO GOA" {
 		t.Errorf("lines lost or reordered words: %q", got)
 	}
 }

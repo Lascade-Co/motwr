@@ -37,9 +37,10 @@ const (
 // Title block (top-center heading)
 // ---------------------------------------------------------------------------
 const (
-	// TitleFont is the ASS family name of the title face. Anton — the tall
-	// condensed brand display face — rendered uppercase.
-	TitleFont = "Anton"
+	// TitleFont is the ASS family name of the title (heading) face. Must equal
+	// the font's internal family name (libass matches by family, not filename).
+	// Realist Clostan Black — the brand display face for headings.
+	TitleFont = "Realist Clostan"
 
 	// The title starts at TitleStartSize px. If it doesn't fit within
 	// TitleMaxWidth it first breaks into two lines (top-heavy), and only then
@@ -50,11 +51,13 @@ const (
 	TitleFloorSize = 48.0
 	// TitleMaxWidth is the fitting budget in font-metric space (not rendered
 	// pixels). LayoutTitle measures advance widths with golang.org/x/image,
-	// whose metric for Anton runs ~1.71x its libass render; 1640 metric px
-	// therefore corresponds to the 972 px usable width left by TitleMargin
-	// (972 * 1.71). Keeping the budget honest lets a big single-line title
-	// fill the frame instead of wrapping prematurely.
-	TitleMaxWidth = 1640.0
+	// whose metric runs at a fixed ratio to the libass render; the budget must
+	// correspond to the 972 px usable width left by TitleMargin times that
+	// ratio, so a big single-line title fills the frame instead of wrapping.
+	// If the budget is too high libass hard-wraps each line and the whole
+	// title block collapses. Calibrated for Realist Clostan Black: the Go
+	// metric runs ~1.049x the libass render, so 972 * 1.049 ≈ 1019.
+	TitleMaxWidth = 1019.0
 	// TitleMargin is the left/right ASS margin (rendered px) for the title and
 	// subtitle. 1080 - 2*54 = 972 px usable.
 	TitleMargin = 54.0
@@ -64,12 +67,16 @@ const (
 	// TitleY is the distance from the frame top to the title's top edge.
 	TitleY = 200.0
 	// TitleLineHeight is the per-line vertical advance as a multiple of the
-	// font size; used to place line 2 and the subtitle. Tight (Anton's caps
-	// have no descenders) so a two-line heading doesn't gap open.
+	// font size; used to place line 2 and the subtitle. Tight (an all-caps
+	// display face has no descenders) so a two-line heading doesn't gap open.
 	TitleLineHeight = 0.75
 	// TitleOutline/TitleShadow are the ASS border and drop-shadow widths (px).
 	TitleOutline = 0.0
 	TitleShadow  = 2.0
+
+	// SubtitleFont is the ASS family name of the subtitle (sub-heading) face.
+	// Bebas Neue — a tall condensed all-caps face; rendered uppercase in gold.
+	SubtitleFont = "Bebas Neue"
 
 	// Subtitle (gold line) size, its gap below the title, and outline width.
 	SubtitleSize    = 56.0
@@ -81,13 +88,14 @@ const (
 // Captions
 // ---------------------------------------------------------------------------
 const (
-	// CaptionFont is the ASS family name of the caption face (a Poppins Bold
-	// Italic instance, family-renamed so libass uses it as-is — real italic,
-	// not faux). Rendered white with a gold word-by-word highlight, outlined,
-	// no box.
-	CaptionFont = "Poppins Caption"
+	// CaptionFont is the ASS family name of the caption face. Quicksand — a
+	// rounded sans, rendered Bold (the Caption style sets the ASS bold flag,
+	// so libass selects Quicksand-Bold.ttf). White with a gold word-by-word
+	// highlight, a simple black outline, no box.
+	CaptionFont = "Quicksand"
 
-	CaptionSize = 66.0
+	// CaptionSize is +10% over the previous 66 px for a chunkier caption.
+	CaptionSize = 72.6
 	// CaptionY is the vertical center of the caption block (lower-middle,
 	// TikTok-style: ~63% of frame height).
 	CaptionY = 1210.0
@@ -95,8 +103,9 @@ const (
 	// usable, so a multi-word page wraps to two lines like the reference.
 	CaptionMargin = 300.0
 	// CaptionOutline/CaptionShadow are the ASS border and drop-shadow widths.
+	// Shadow is 0: captions use a simple black outline only, no drop shadow.
 	CaptionOutline = 5.0
-	CaptionShadow  = 3.0
+	CaptionShadow  = 0.0
 	// CaptionLetterSpacing is extra px between characters (ASS \fsp).
 	CaptionLetterSpacing = 1.0
 
@@ -107,6 +116,36 @@ const (
 	// GoldBGR is the subtitle color in ASS BBGGRR hex order
 	// (#FFD700 gold -> blue=00, green=D7, red=FF).
 	GoldBGR = "00D7FF"
+)
+
+// ---------------------------------------------------------------------------
+// Radial spotlight
+// ---------------------------------------------------------------------------
+//
+// A radial (elliptical) brightness falloff applied to the base map footage:
+// full brightness in the center — where the vehicle travels — fading to a
+// dim floor toward the frame edges, so the vehicle and its surroundings read
+// as highlighted. Applied before the bird/logo/caption overlays, so only the
+// map is darkened. Radii are expressed in normalized frame units where 1.0
+// reaches the mid-edge (left/right or top/bottom) and ~1.41 reaches a corner.
+const (
+	// SpotlightEnabled toggles the whole effect. Set false to render flat.
+	SpotlightEnabled = true
+
+	// SpotlightCenterX/Y is the bright center as a fraction of frame
+	// width/height. 0.5,0.5 is the exact frame center (where the vehicle sits).
+	SpotlightCenterX = 0.5
+	SpotlightCenterY = 0.5
+
+	// SpotlightInnerRadius: everything within this normalized radius keeps full
+	// brightness. SpotlightOuterRadius: brightness reaches its floor here and
+	// beyond. Between the two the falloff is a smooth (smoothstep) ramp.
+	SpotlightInnerRadius = 0.40
+	SpotlightOuterRadius = 1.10
+
+	// SpotlightEdgeBrightness is the brightness multiplier at/beyond the outer
+	// radius (0..1). 0.35 leaves the darkened edges at 35% of their brightness.
+	SpotlightEdgeBrightness = 0.35
 )
 
 // ---------------------------------------------------------------------------
@@ -145,7 +184,7 @@ const (
 // Text-to-speech (edge-tts)
 // ---------------------------------------------------------------------------
 const (
-	TTSVoice          = "en-US-GuyNeural"
+	TTSVoice          = "en-US-AndrewNeural"
 	TTSMaxScriptBytes = 32 << 10 // one websocket turn; ample for narration
 	TTSAttempts       = 3        // total tries before giving up
 )

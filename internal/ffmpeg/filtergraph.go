@@ -43,6 +43,12 @@ func BuildMainArgs(p RenderPlan) []string {
 	fmt.Fprintf(&g, "[0:v]setpts=%f*PTS,scale=%d:%d,fps=%d[v0];",
 		p.SpeedFactor, config.OutputWidth, config.OutputHeight, config.OutputFPS)
 	cur := "v0"
+	// Radial spotlight on the map footage only (before bird/logo/caption
+	// overlays), so the vehicle-centered region stays bright and the edges dim.
+	if config.SpotlightEnabled {
+		fmt.Fprintf(&g, "[%s]%s[vspot];", cur, spotlightFilter())
+		cur = "vspot"
+	}
 	for i, a := range p.Appearances {
 		fmt.Fprintf(&g,
 			"[%d:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setpts=PTS-STARTPTS+%.3f/TB[bird%d];",
@@ -88,6 +94,31 @@ func BuildMainArgs(p RenderPlan) []string {
 		"-t", fmt.Sprintf("%.3f", p.MainDuration),
 		p.OutPath)
 	return args
+}
+
+// spotlightFilter builds a geq filter that scales each pixel's luma by a
+// smooth radial (elliptical, aspect-aware) falloff: full brightness inside
+// the inner radius, dropping to SpotlightEdgeBrightness at/beyond the outer
+// radius. Distance is normalized so 1.0 reaches the mid-edge; chroma is left
+// untouched so only brightness changes. The whole expression is single-quoted
+// so its ',' and ';' are not parsed as filtergraph separators.
+//
+// geq is a per-pixel evaluator and is slower than the rest of the graph; it
+// runs on the base map footage only. Disable via config.SpotlightEnabled.
+func spotlightFilter() string {
+	// dx,dy normalized so |dx|=1 at the left/right edge and |dy|=1 at the
+	// top/bottom edge; nr is the elliptical distance from the center.
+	dx := fmt.Sprintf("(X-%g*W)/(W/2)", config.SpotlightCenterX)
+	dy := fmt.Sprintf("(Y-%g*H)/(H/2)", config.SpotlightCenterY)
+	lum := fmt.Sprintf(
+		"st(0,hypot(%s,%s));"+ // nr
+			"st(1,clip((ld(0)-%g)/(%g-%g),0,1));"+ // ramp position in [0,1]
+			"st(2,ld(1)*ld(1)*(3-2*ld(1)));"+ // smoothstep
+			"lum(X,Y)*(1-(1-%g)*ld(2))", // dim toward the edge floor
+		dx, dy,
+		config.SpotlightInnerRadius, config.SpotlightOuterRadius, config.SpotlightInnerRadius,
+		config.SpotlightEdgeBrightness)
+	return fmt.Sprintf("geq=lum='%s':cb='cb(X,Y)':cr='cr(X,Y)'", lum)
 }
 
 // encodeArgs are the output codec settings shared by every segment the
