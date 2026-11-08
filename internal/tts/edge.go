@@ -17,7 +17,7 @@ import (
 
 const (
 	wssBase    = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1"
-	gecVersion = "1-143.0.3650.75"
+	gecVersion = "2-143.0.3650.75"
 	userAgent  = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"
 	origin     = "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold"
 )
@@ -58,6 +58,7 @@ func synthesizeOnce(ctx context.Context, script, outPath string) ([]WordStamp, e
 	hdr.Set("User-Agent", userAgent)
 	hdr.Set("Pragma", "no-cache")
 	hdr.Set("Cache-Control", "no-cache")
+	hdr.Set("Cookie", "muid="+randomHex16()+";")
 
 	conn, _, err := websocket.Dial(ctx, url, &websocket.DialOptions{HTTPHeader: hdr})
 	if err != nil {
