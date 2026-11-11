@@ -30,6 +30,12 @@ func TestGenerateASSHeaderAndStyles(t *testing.T) {
 			t.Errorf("missing %q", want)
 		}
 	}
+	// Title stays readable against bright maps with a heavy outline and shadow.
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "Style: Title,") && !strings.Contains(line, ",1,6,4,8,") {
+			t.Error("title style must have a 6 px outline and 4 px shadow")
+		}
+	}
 	// Caption is white on a black outline (no box). The Poppins face is
 	// already bold+italic, so the style flags stay Bold=0,Italic=0.
 	if !strings.Contains(out, "Style: Caption,Poppins Caption,66,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,") {
