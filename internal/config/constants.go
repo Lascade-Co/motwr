@@ -68,8 +68,8 @@ const (
 	// have no descenders) so a two-line heading doesn't gap open.
 	TitleLineHeight = 0.75
 	// TitleOutline/TitleShadow are the ASS border and drop-shadow widths (px).
-	TitleOutline = 0.0
-	TitleShadow  = 2.0
+	TitleOutline = 6.0
+	TitleShadow  = 4.0
 
 	// Subtitle (gold line) size, its gap below the title, and outline width.
 	SubtitleSize    = 56.0
